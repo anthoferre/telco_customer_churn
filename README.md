@@ -49,50 +49,8 @@ Ce jeu de données offre de nombreuses possibilités d'analyse et d'application,
 * **Segmentation de la clientèle :** Regrouper les clients en fonction de leurs caractéristiques et de leur comportement pour adapter les stratégies de fidélisation.
 * **Développement de stratégies de rétention ciblées :** Concevoir des interventions spécifiques pour les clients à haut risque de désabonnement.
 * **Évaluation de l'impact des offres et des promotions :** Analyser si certaines offres ou promotions ont un effet sur la réduction du taux de désabonnement.
-* **Formation et évaluation de modèles d'apprentissage automatique :** Ce jeu de données est un excellent point de départ pour s'entraîner et évaluer divers algorithmes de classification.
-* **Recherche académique :** Étudier les dynamiques de la fidélisation de la clientèle dans le secteur des télécommunications.
-* **Développement d'applications et d'outils d'aide à la décision :** Créer des systèmes qui aident les entreprises à identifier et à retenir les clients potentiellement perdus.
-* **Réglage fin de grands modèles de langage (LLM) :** Utiliser le jeu de données pour entraîner des LLM à comprendre et à générer du texte lié à l'analyse du désabonnement client.
 
-## 4. Problématiques et considérations potentielles
-
-Bien que le jeu de données soit décrit comme propre et bien entretenu, il est crucial de prendre en compte les points suivants lors de son utilisation :
-
-* **Qualité des données :**
-    * **Valeurs manquantes :** Vérifier s'il existe des valeurs manquantes dans certaines colonnes et décider de la stratégie à adopter (imputation, suppression, etc.). Le lien Kaggle ne mentionne pas explicitement de valeurs manquantes, mais une exploration initiale est toujours recommandée.
-    * **Cohérence des données :** S'assurer de la cohérence des formats et des unités dans chaque colonne. Par exemple, vérifier l'unité de `MonthlyCharges` et `TotalCharges`.
-    * **Erreurs de saisie :** Bien que peu probable dans un jeu de données préparé, il est toujours bon de vérifier la présence d'éventuelles erreurs de saisie.
-
-* **Biais potentiels :**
-    * **Représentativité de l'échantillon :** Évaluer si l'échantillon de clients représente fidèlement la base de clientèle globale de l'entreprise. Des biais dans l'échantillon pourraient affecter la généralisation des modèles.
-    * **Définition du "Churn" :** Comprendre précisément ce que signifie "s'être désabonné au cours du dernier mois". Cette définition peut avoir un impact sur l'interprétation des résultats.
-    * **Biais temporel :** Les données représentent une période spécifique. Les tendances et les facteurs de désabonnement peuvent évoluer avec le temps.
-
-* **Ingénierie des fonctionnalités (Feature Engineering) :**
-    * Créer de nouvelles fonctionnalités à partir des données existantes pourrait améliorer les performances des modèles. Par exemple, calculer le ratio des frais mensuels par rapport aux frais totaux, ou créer des indicateurs pour les combinaisons de services.
-    * Encoder correctement les variables catégorielles (par exemple, one-hot encoding, label encoding) pour les utiliser dans les modèles d'apprentissage automatique.
-
-* **Interprétabilité des modèles :**
-    * Pour certaines applications, il est crucial de comprendre pourquoi un modèle prédit un certain résultat. Les modèles plus complexes (comme les réseaux neuronaux) peuvent être moins interprétables que les modèles plus simples (comme la régression logistique ou les arbres de décision).
-
-* **Généralisation des modèles :**
-    * S'assurer que les modèles construits sur ce jeu de données se généralisent bien à de nouvelles données non vues. Utiliser des techniques de validation appropriées (par exemple, validation croisée) est essentiel.
-
-* **Considérations éthiques :**
-    * Être conscient des implications éthiques de la prédiction du désabonnement. Il est important d'utiliser ces informations de manière responsable et de ne pas discriminer certains groupes de clients.
-
-## 5. Licence
-
-Le lien Kaggle ne spécifie pas explicitement de licence. Il est recommandé de vérifier les informations de licence sur la page du jeu de données Kaggle pour comprendre les conditions d'utilisation et de distribution.
-
-## 6. Remerciements
-
-Nous remercions [Nom de l'utilisateur Kaggle qui a partagé le jeu de données, si mentionné] pour avoir mis ce jeu de données à disposition de la communauté.
-
-## 7. Références
+ 
+## 4. Références
 
 [Lien vers le jeu de données sur Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)
-
----
-
-Ce fichier README plus détaillé fournit une meilleure compréhension du jeu de données, de ses utilisations potentielles et des points à considérer lors de son analyse. N'hésite pas si tu souhaites que j'ajoute d'autres sections ou que je développe certains aspects !

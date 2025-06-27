@@ -111,9 +111,9 @@ df = df.rename(columns={"OnlineSecurity_No internet service" : "No_internet_serv
 if choix_partie == 'III - Data visualization':
     st.subheader('III - Data visualization')
 
-    type_graphique = ['Distribution','Relation avec la variable churn','Proportion','Corrélation']
+    type_graphique = ['Distribution','Relation avec la variable churn','Distribution des variables numériques par statut de désabonnement','Proportion','Corrélation']
     graphique_choisi = st.radio("Quel est le type d'analyse graphique souhaitée?", type_graphique)
-    features_list_df_cleaned = list(df_cleaned.columns)
+    features_list_df_cleaned = list(df_cleaned.select_dtypes(['int','float']).columns)
     features_list_df = list(df.drop('customerID', axis = 1).columns)
 
     if graphique_choisi == 'Distribution':
@@ -124,7 +124,28 @@ if choix_partie == 'III - Data visualization':
         plt.title('Distribution de la variable {}'.format(x_choisi))
         st.pyplot(plt)
 
-    if graphique_choisi == 'Relation avec la variable churn':
+    if graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
+
+        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse', options = features_list_df_cleaned)
+        fig, axes = plt.subplots(1, 2, figsize=(16, 6)) # figsize (largeur, hauteur)
+
+        # --- Graphique 1: sns.histplot avec multiple='fill' ---
+        sns.histplot(data=df, x= x_choisi, hue='Churn', multiple='fill', bins=20, ax=axes[0])
+        axes[0].set_title(f'Distribution du Churn par {x_choisi}', fontsize=14)
+        axes[0].set_xlabel(f'{x_choisi}')
+        axes[0].set_ylabel('Proportion de Churn (%)') # L'axe Y représente la proportion de churn à l'intérieur de chaque bin
+        axes[0].tick_params(axis='y', labelleft=True) # S'assurer que les labels de l'axe Y sont visibles
+        axes[0].set_yticks(np.arange(0, 1.1, 0.2)) # Définir des ticks pour voir les pourcentages (0%, 20%, 40%...)
+        axes[0].set_yticklabels([f'{int(p*100)}%' for p in np.arange(0, 1.1, 0.2)]) # Labels en pourcentage
+
+
+        # --- Graphique 2: sns.boxplot ---
+        sns.boxplot(data=df, hue='Churn', y=x_choisi, ax=axes[1], palette='Set2')
+        axes[1].set_title(f'Distribution de {x_choisi} par Statut de Churn', fontsize=14)
+        axes[1].set_xlabel('Statut de Churn')
+        axes[1].set_ylabel(f'{x_choisi}')
+        st.pyplot(plt)
+    if graphique_choisi == 'Taux de désabonnement par variable catégorielle':
 
         x_choisi = st.selectbox(label = '''Choisir une variable d'intérêt''',options = features_list_df_cleaned)
 

@@ -1,3 +1,5 @@
-.venv
+.venv/
 *.pkl
 *.png
+x_test
+y_test

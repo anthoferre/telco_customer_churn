@@ -6,6 +6,7 @@ import numpy as np
 import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
+import io
 sns.set_theme()
 from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.metrics import classification_report_imbalanced
@@ -16,7 +17,10 @@ st.title("Taux de désabonnements des clients de télécommunication")
 
 
 
-choix_partie = st.sidebar.radio("Sommaire",["I - Introduction","II - Exploration des données","III - Data visualization","IV - Modèle de prédiction du taux de désabonnement des clients", "V - Conclusion et Perspectives"])
+choix_partie = st.sidebar.radio("Sommaire",["I - Introduction","II - Exploration des données",
+                                            "III - Data visualization",
+                                            "IV - Modèle de prédiction du taux de désabonnement des clients",
+                                         "V - Conclusion et Perspectives"])
 
                                                    # récupérer les données
 @st.cache_data
@@ -25,19 +29,24 @@ def open_df(dataframe):
 
 df = open_df('WA_Fn-UseC_-Telco-Customer-Churn.csv')
 
-
 df_cleaned = pd.read_pickle('df_telco_customer_churn.pkl')
 
                                         #Partie 1 : Introduction
     
 if choix_partie == 'I - Introduction':
+
     st.subheader('I - Introduction')
     st.image('https://vertone.com/wp-content/uploads/2018/12/adobestock_436800241-scaled.jpeg', use_container_width=False)
-    
-    st.text('''Ce jeu de données fournit un aperçu complet des clients d'une entreprise de télécommunications, en se concentrant sur les facteurs qui influencent leur décision de quitter le service (désabonnement ou "churn"). Il contient des informations démographiques, des détails sur leurs comptes, les services qu'ils utilisent et leurs interactions avec l'entreprise. \n\nL'objectif principal de ce jeu de données est de permettre l'analyse du comportement des clients et la prédiction du taux de désabonnement, afin de développer des stratégies de fidélisation efficaces.''')
-if choix_partie == 'II - Exploration des données':
-    st.subheader('II - Exploration des données')
+    st.text('''Ce jeu de données fournit un aperçu complet des clients d'une entreprise de télécommunications,
+               en se concentrant sur les facteurs qui influencent leur décision de quitter le service (désabonnement ou "churn").
+               Il contient des informations démographiques, des détails sur leurs comptes,
+               les services qu'ils utilisent et leurs interactions avec l'entreprise. 
+               \n\nL'objectif principal de ce jeu de données est de permettre l'analyse du comportement des 
+               clients et la prédiction du taux de désabonnement, afin de développer des stratégies de fidélisation efficaces.''')
 
+if choix_partie == 'II - Exploration des données':
+    
+    st.subheader('II - Exploration des données') 
     pd.set_option('display.max_columns',None)
     st.dataframe(df.head(100))
 
@@ -45,7 +54,6 @@ if choix_partie == 'II - Exploration des données':
 
     with col1:
         with st.expander("Afficher les informations détaillées"): # Permet de masquer/afficher les détails
-            import io
             buffer = io.StringIO()
             df.info(buf=buffer)
             s = buffer.getvalue()
@@ -53,9 +61,7 @@ if choix_partie == 'II - Exploration des données':
 
     with col2:
         with st.expander("Afficher les statistiques descriptives"):
-            st.dataframe(df.describe()) # Affiche les statistiques d
-
-    import streamlit as st
+            st.dataframe(df.describe()) # Affiche les statistiques descriptives
 
     st.header("Aperçu Initial du Jeu de Données")
 
@@ -108,17 +114,29 @@ df.drop('MultipleLines_No phone service', axis = 1, inplace=True)
 
 # Renommer la colonne "No_internet_service"
 df = df.rename(columns={"OnlineSecurity_No internet service" : "No_internet_service"})''')
+    
 if choix_partie == 'III - Data visualization':
+
     st.subheader('III - Data visualization')
 
-    type_graphique = ['Distribution','Relation avec la variable churn','Distribution des variables numériques par statut de désabonnement','Proportion','Corrélation']
+    type_graphique = ['Distribution','Distribution des variables numériques par statut de désabonnement',
+                      'Taux de désabonnement par variable catégorielle','Proportion','Corrélation']
+    
     graphique_choisi = st.radio("Quel est le type d'analyse graphique souhaitée?", type_graphique)
-    features_list_df_cleaned = list(df_cleaned.select_dtypes(['int','float']).columns)
+
     features_list_df = list(df.drop('customerID', axis = 1).columns)
+    features_list_df_cleaned_num = []
+    features_list_df_cleaned_cat = []
+    
+    for col in df_cleaned.columns:
+        if len(df_cleaned[col].unique()) > 2:
+            features_list_df_cleaned_num.append(col)
+        else:
+            features_list_df_cleaned_cat.append(col)
 
     if graphique_choisi == 'Distribution':
         
-        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse',options = features_list_df_cleaned)
+        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse',options = features_list_df_cleaned_num)
         nb_bins =   st.number_input('Nombre de séparations sur le graphique',2,50)
         ax = sns.displot(df_cleaned[x_choisi], bins = nb_bins, stat = 'percent', aspect = 3)
         plt.title('Distribution de la variable {}'.format(x_choisi))
@@ -126,7 +144,7 @@ if choix_partie == 'III - Data visualization':
 
     if graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
 
-        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse', options = features_list_df_cleaned)
+        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse', options = features_list_df_cleaned_num)
         fig, axes = plt.subplots(1, 2, figsize=(16, 6)) # figsize (largeur, hauteur)
 
         # --- Graphique 1: sns.histplot avec multiple='fill' ---
@@ -145,9 +163,10 @@ if choix_partie == 'III - Data visualization':
         axes[1].set_xlabel('Statut de Churn')
         axes[1].set_ylabel(f'{x_choisi}')
         st.pyplot(plt)
+
     if graphique_choisi == 'Taux de désabonnement par variable catégorielle':
 
-        x_choisi = st.selectbox(label = '''Choisir une variable d'intérêt''',options = features_list_df_cleaned)
+        x_choisi = st.selectbox(label = '''Choisir une variable d'intérêt''',options = features_list_df_cleaned_cat)
 
         if len(df_cleaned[x_choisi].unique()) > 5:
             ax = sns.catplot(data = df_cleaned, x = x_choisi, hue = 'Churn', kind = st.selectbox(label = 'Type de graphique', options = ['box','violin','boxen']), aspect = 3)

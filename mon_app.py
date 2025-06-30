@@ -7,13 +7,23 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import io
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, classification_report, recall_score
 from imblearn.metrics import classification_report_imbalanced
 
 # Configuration de Seaborn
 sns.set_theme(style="whitegrid") # Utiliser un thème plus léger et souvent plus rapide à rendre
 
 st.set_page_config(layout="wide")
+
+# Masquer le menu de Streamlit et le bouton de déploiement
+hide_streamlit_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stAppDeployButton {display: none;}
+    </style>
+    """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
 st.title("Taux de désabonnements des clients de télécommunication")
 
@@ -70,7 +80,7 @@ if choix_partie == 'I - Introduction':
 # Partie 2 : Exploration des données
 elif choix_partie == 'II - Exploration des données':
     st.subheader('II - Exploration des données') 
-    st.dataframe(df.head(100))
+    st.dataframe(df.head())
 
     col1, col2 = st.columns(2)
 
@@ -280,40 +290,32 @@ elif choix_partie == 'IV - Modèle de prédiction du taux de désabonnement des 
         ax.set_ylabel('Vraies valeurs')
         ax.set_title('Matrice de Confusion')
         return fig
-
+    
+    list_of_models = [model_lr, model_svm, model_dt, model_rf]
+    list_of_recall = []
+    list_of_f1_score = []
     def display_model_info(col_st, title, model, X_test_data, y_test_data, labels_data):
+        for models in list_of_models:
+            y_pred = models.predict(X_test_data)
+            recall = recall_score(y_test, y_pred)
+            f1_score = models.best_score_
+            list_of_recall.append(recall)
+            list_of_f1_score.append(f1_score)
+        mean_recall_score = np.mean(list_of_recall)
+        mean_f1_score = np.mean(list_of_f1_score)
         col_st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 1.2em'>{title}</div>", unsafe_allow_html=True)
-
-        if hasattr(model, 'best_score_'):
-            col_st.markdown(f"<div style='text-align: center;'>Meilleur score : **{np.round(model.best_score_, 4)}**</div>", unsafe_allow_html=True)
-        else:
-            col_st.info('Meilleur score : Non disponible (le modèle n\'a pas d\'attribut best_score_)')
 
         y_pred = model.predict(X_test_data)
 
-        col_st.markdown("<div style='text-align: center; font-weight: bold;'>Matrice de Confusion :</div>", unsafe_allow_html=True)
         cm_fig = plot_confusion_matrix(y_test_data, y_pred, labels_data)
         col_st.pyplot(cm_fig)
         plt.close(cm_fig) # Fermer la figure
 
-        col_st.write('**Classification Report Imbalanced:**')
-        target_names_str = [str(label) for label in labels_data]
-        report_imbalanced_str = classification_report_imbalanced(y_test_data, y_pred, target_names=target_names_str)
-        col_st.code(report_imbalanced_str)
+        col_st.metric(label = 'F1-Score', value = np.round(model.best_score_,3), border = True, delta = np.round(model.best_score_ - mean_f1_score, 3))
+        col_st.metric(label = 'Recall-Score (Churners)', value = np.round(recall_score(y_test, y_pred),3), border = True, delta = np.round(recall_score(y_test, y_pred)- mean_recall_score,3))
+        
 
-        col_st.markdown("<div style='text-align: center; font-weight: bold;'>Hyperparamètres :</div>", unsafe_allow_html=True)
-        if hasattr(model, 'best_params_'):
-            for param, value in model.best_params_.items():
-                col_st.write(f'**{param}**: {value}')
-        elif hasattr(model, 'get_params'):
-            params = model.get_params()
-            for param, value in params.items():
-                col_st.write(f'**{param}**: {value}')
-        else:
-            col_st.info('Hyperparamètres : Non disponibles')
-
-    st.title("Comparaison des Modèles de Classification")
-
+   
     col1, col2, col3, col4 = st.columns(4)
 
     labels_churn = [0, 1] # Assurez-vous que c'est cohérent avec vos données

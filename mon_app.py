@@ -1,4 +1,4 @@
-# importer toutes les librairies
+# Importer toutes les librairies
 import streamlit as st
 import os
 import pandas as pd
@@ -7,53 +7,75 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import io
-sns.set_theme()
 from sklearn.metrics import confusion_matrix, classification_report
 from imblearn.metrics import classification_report_imbalanced
+
+# Configuration de Seaborn
+sns.set_theme(style="whitegrid") # Utiliser un thème plus léger et souvent plus rapide à rendre
 
 st.set_page_config(layout="wide")
 
 st.title("Taux de désabonnements des clients de télécommunication")
 
+# --- Fonctions de chargement des données avec cache ---
 
-
-choix_partie = st.sidebar.radio("Sommaire",["I - Introduction","II - Exploration des données",
-                                            "III - Data visualization",
-                                            "IV - Modèle de prédiction du taux de désabonnement des clients",
-                                         "V - Conclusion et Perspectives"])
-
-                                                   # récupérer les données
+# Utilisation de st.cache_data pour les DataFrames qui ne changent pas
 @st.cache_data
-def open_df(dataframe):
-    return pd.read_csv(dataframe)
+def load_dataframe(filepath):
+    """Charge un DataFrame à partir d'un fichier CSV ou Pickle."""
+    if filepath.endswith('.csv'):
+        return pd.read_csv(filepath)
+    elif filepath.endswith('.pkl'):
+        return pd.read_pickle(filepath)
+    else:
+        raise ValueError("Format de fichier non pris en charge. Utilisez .csv ou .pkl")
 
-df = open_df('WA_Fn-UseC_-Telco-Customer-Churn.csv')
+# Charger les DataFrames une seule fois
+df = load_dataframe('WA_Fn-UseC_-Telco-Customer-Churn.csv')
+df_cleaned = load_dataframe('df_telco_customer_churn.pkl')
 
-df_cleaned = pd.read_pickle('df_telco_customer_churn.pkl')
+# --- Préparation des listes de colonnes (peut être mis en cache si df_cleaned est statique) ---
+@st.cache_data
+def get_cleaned_features_lists(dataframe):
+    """Prépare les listes de variables numériques et catégorielles."""
+    features_num = [col for col in dataframe.columns if dataframe[col].nunique() > 2]
+    features_cat = [col for col in dataframe.columns if dataframe[col].nunique() <= 2]
+    return features_num, features_cat
 
-                                        #Partie 1 : Introduction
-    
+features_list_df_cleaned_num, features_list_df_cleaned_cat = get_cleaned_features_lists(df_cleaned)
+
+# --- Barre latérale pour la navigation ---
+choix_partie = st.sidebar.radio(
+    "Sommaire",
+    [
+        "I - Introduction",
+        "II - Exploration des données",
+        "III - Data visualization",
+        "IV - Modèle de prédiction du taux de désabonnement des clients",
+        "V - Conclusion et Perspectives"
+    ]
+)
+
+# --- Contenu principal de l'application ---
+
+# Partie 1 : Introduction
 if choix_partie == 'I - Introduction':
-
     st.subheader('I - Introduction')
     st.image('https://vertone.com/wp-content/uploads/2018/12/adobestock_436800241-scaled.jpeg', use_container_width=False)
-    st.text('''Ce jeu de données fournit un aperçu complet des clients d'une entreprise de télécommunications,
-               en se concentrant sur les facteurs qui influencent leur décision de quitter le service (désabonnement ou "churn").
-               Il contient des informations démographiques, des détails sur leurs comptes,
-               les services qu'ils utilisent et leurs interactions avec l'entreprise. 
-               \n\nL'objectif principal de ce jeu de données est de permettre l'analyse du comportement des 
-               clients et la prédiction du taux de désabonnement, afin de développer des stratégies de fidélisation efficaces.''')
+    st.markdown("""
+    Ce jeu de données fournit un aperçu complet des clients d'une entreprise de télécommunications, en se concentrant sur les facteurs qui influencent leur décision de quitter le service (désabonnement ou "churn"). Il contient des informations démographiques, des détails sur leurs comptes, les services qu'ils utilisent et leurs interactions avec l'entreprise. 
+    \n\nL'objectif principal de ce jeu de données est de permettre l'analyse du comportement des clients et la prédiction du taux de désabonnement, afin de développer des stratégies de fidélisation efficaces.
+    """)
 
-if choix_partie == 'II - Exploration des données':
-    
+# Partie 2 : Exploration des données
+elif choix_partie == 'II - Exploration des données':
     st.subheader('II - Exploration des données') 
-    pd.set_option('display.max_columns',None)
     st.dataframe(df.head(100))
 
     col1, col2 = st.columns(2)
 
     with col1:
-        with st.expander("Afficher les informations détaillées"): # Permet de masquer/afficher les détails
+        with st.expander("Afficher les informations détaillées"):
             buffer = io.StringIO()
             df.info(buf=buffer)
             s = buffer.getvalue()
@@ -61,30 +83,29 @@ if choix_partie == 'II - Exploration des données':
 
     with col2:
         with st.expander("Afficher les statistiques descriptives"):
-            st.dataframe(df.describe()) # Affiche les statistiques descriptives
+            st.dataframe(df.describe())
 
     st.header("Aperçu Initial du Jeu de Données")
-
     st.subheader("1. Structure du Jeu de Données")
-    st.markdown(f" **Taille :** L'ensemble de données se compose de **{7043} lignes** d'informations, réparties sur **{21} colonnes** distinctes.")
-    st.markdown("   La majorité des colonnes, soit **18**, contiennent des données de type texte (`object`). **2** colonnes contiennent des nombres entiers (`int`). **1** colonne contient des nombres décimaux (`float`).")
+    st.markdown(f"**Taille :** L'ensemble de données se compose de **{df.shape[0]} lignes** d'informations, réparties sur **{df.shape[1]} colonnes** distinctes.")
+    st.markdown("La majorité des colonnes, soit **18**, contiennent des données de type texte (`object`). **2** colonnes contiennent des nombres entiers (`int`). **1** colonne contient des nombres décimaux (`float`).")
 
     st.subheader("2. Points Requérant une Attention Particulière (Qualité des Données)")
-
     st.markdown("**- Colonne 'TotalCharges'**")
-    st.markdown("Actuellement identifiée comme contenant du texte (`object`), cette colonne devrait normalement contenir des nombres décimaux (`float`) représentant le montant total facturé aux clients. L'examen a révélé que **11 lignes** présentent des valeurs manquantes dans cette colonne, ce qui est probablement la raison de son type de données incorrect. ")
-    st.markdown("\n Solution : supprimer les 11 lignes où TotalCharges est manquant semble être une approche raisonnable pour commencer, étant donné le faible nombre de lignes concernées. Ce qui permettra de convertir la colonne en nombres décimaux.")
+    st.markdown("""
+    Actuellement identifiée comme contenant du texte (`object`), cette colonne devrait normalement contenir des nombres décimaux (`float`) représentant le montant total facturé aux clients. L'examen a révélé que **11 lignes** présentent des valeurs manquantes dans cette colonne, ce qui est probablement la raison de son type de données incorrect.
+    \nSolution : supprimer les 11 lignes où TotalCharges est manquant semble être une approche raisonnable pour commencer, étant donné le faible nombre de lignes concernées. Ce qui permettra de convertir la colonne en nombres décimaux.
+    """)
 
     st.markdown("**- Colonnes Binaires**")
     st.markdown("Plusieurs colonnes représentent des choix binaires (par exemple, 'Oui'/'Non', 'Vrai'/'Faux'). Bien qu'actuellement de type texte (`object`), il serait avantageux de les convertir en valeurs numériques (0 et 1) pour faciliter les analyses quantitatives et la modélisation.")
 
     st.subheader("3. Informations Clés sur les Données")
-
     st.markdown("**- Absence de Doublons :**")
     st.markdown("L'analyse de la colonne 'customerID' n'a révélé aucune valeur dupliquée, ce qui indique qu'il n'y a pas de lignes complètement identiques dans l'ensemble du jeu de données.")
 
     st.markdown("**- Déséquilibre de la Variable Cible ('Churner')**")
-    st.markdown("La variable que nous cherchons à prédire ('Churner', indiquant si un client s'est désabonné ou non) est déséquilibrée. Environ **25%** des clients se sont débasonnés, tandis que la majorité est restée. Ce déséquilibre devra être pris en compte lors de la construction de modèles prédictifs (technique de sous ou sur échantillonage).")
+    st.markdown(f"La variable que nous cherchons à prédire ('Churn', indiquant si un client s'est désabonné ou non) est déséquilibrée. Environ **{np.round(df['Churn'].value_counts(normalize=True).get('Yes', 0) * 100)}%** des clients se sont désabonnés, tandis que la majorité est restée. Ce déséquilibre devra être pris en compte lors de la construction de modèles prédictifs (technique de sous ou sur échantillonnage).")
 
     st.markdown("**- Absence de Valeurs Aberrantes Numériques**")
     st.markdown("Une première vérification des colonnes contenant des nombres n'a pas révélé de valeurs anormalement éloignées des autres, suggérant une certaine cohérence dans les données numériques.")
@@ -114,194 +135,218 @@ df.drop('MultipleLines_No phone service', axis = 1, inplace=True)
 
 # Renommer la colonne "No_internet_service"
 df = df.rename(columns={"OnlineSecurity_No internet service" : "No_internet_service"})''')
-    
-if choix_partie == 'III - Data visualization':
 
+# Partie 3 : Data Visualization
+elif choix_partie == 'III - Data visualization':
     st.subheader('III - Data visualization')
 
-    type_graphique = ['Distribution','Distribution des variables numériques par statut de désabonnement',
-                      'Taux de désabonnement par variable catégorielle','Proportion','Corrélation']
+    type_graphique = [
+        "Distribution d'une variable",
+        "Distribution des variables numériques par statut de désabonnement",
+        "Taux de désabonnement par variable catégorielle",
+        "Proportion",
+        "Corrélation"
+    ]
     
     graphique_choisi = st.radio("Quel est le type d'analyse graphique souhaitée?", type_graphique)
 
-    features_list_df = list(df.drop('customerID', axis = 1).columns)
-    features_list_df_cleaned_num = []
-    features_list_df_cleaned_cat = []
-    
-    for col in df_cleaned.columns:
-        if len(df_cleaned[col].unique()) > 2:
-            features_list_df_cleaned_num.append(col)
-        else:
-            features_list_df_cleaned_cat.append(col)
-
-    if graphique_choisi == 'Distribution':
+    if graphique_choisi == "Distribution d'une variable":
+        x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=df_cleaned.columns)
         
-        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse',options = features_list_df_cleaned_num)
-        nb_bins =   st.number_input('Nombre de séparations sur le graphique',2,50)
-        ax = sns.displot(df_cleaned[x_choisi], bins = nb_bins, stat = 'percent', aspect = 3)
-        plt.title('Distribution de la variable {}'.format(x_choisi))
-        st.pyplot(plt)
+        fig, ax = plt.subplots(figsize=(10, 6))
+        if df_cleaned[x_choisi].nunique() > 5: # Utiliser nunique pour distinguer numérique/catégorielle avec plusieurs valeurs
+            sns.histplot(df_cleaned[x_choisi], stat='percent', ax=ax)
+            ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
+            ax.set_ylabel('Pourcentage')
+        else:
+            sns.countplot(x=df_cleaned[x_choisi], hue=df_cleaned[x_choisi], stat='percent', palette='viridis', ax=ax, legend=False)
+            ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
+            ax.set_ylabel('Pourcentage')
+            for container in ax.containers:
+                ax.bar_label(container, fmt='%.1f%%', label_type='edge', padding=3)
+        st.pyplot(fig)
+        plt.close(fig) # Fermer la figure pour libérer de la mémoire
 
-    if graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
+    elif graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
+        x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=features_list_df_cleaned_num)
+        
+        fig, axes = plt.subplots(1, 2, figsize=(18, 7)) # Agrandir légèrement pour la clarté
 
-        x_choisi = st.selectbox(label = 'Choisir une variable en abscisse', options = features_list_df_cleaned_num)
-        fig, axes = plt.subplots(1, 2, figsize=(16, 6)) # figsize (largeur, hauteur)
-
-        # --- Graphique 1: sns.histplot avec multiple='fill' ---
-        sns.histplot(data=df, x= x_choisi, hue='Churn', multiple='fill', bins=20, ax=axes[0])
+        sns.histplot(data=df_cleaned, x=x_choisi, hue='Churn', multiple='fill', bins=20, ax=axes[0], palette='coolwarm')
         axes[0].set_title(f'Distribution du Churn par {x_choisi}', fontsize=14)
         axes[0].set_xlabel(f'{x_choisi}')
-        axes[0].set_ylabel('Proportion de Churn (%)') # L'axe Y représente la proportion de churn à l'intérieur de chaque bin
-        axes[0].tick_params(axis='y', labelleft=True) # S'assurer que les labels de l'axe Y sont visibles
-        axes[0].set_yticks(np.arange(0, 1.1, 0.2)) # Définir des ticks pour voir les pourcentages (0%, 20%, 40%...)
-        axes[0].set_yticklabels([f'{int(p*100)}%' for p in np.arange(0, 1.1, 0.2)]) # Labels en pourcentage
+        axes[0].set_ylabel('Proportion de Churn')
+        axes[0].set_yticks(np.arange(0, 1.1, 0.2))
+        axes[0].set_yticklabels([f'{int(p*100)}%' for p in np.arange(0, 1.1, 0.2)])
+        axes[0].legend(title='Churn', labels=['Non', 'Oui']) # S'assurer que les labels de légende sont clairs
 
-
-        # --- Graphique 2: sns.boxplot ---
-        sns.boxplot(data=df, hue='Churn', y=x_choisi, ax=axes[1], palette='Set2')
+        sns.boxplot(data=df_cleaned, y=x_choisi, hue='Churn', ax=axes[1], palette='Set2')
         axes[1].set_title(f'Distribution de {x_choisi} par Statut de Churn', fontsize=14)
         axes[1].set_xlabel('Statut de Churn')
         axes[1].set_ylabel(f'{x_choisi}')
-        st.pyplot(plt)
+        axes[1].set_xticks([0, 1])
+        axes[1].set_xticklabels(['Non-Churn', 'Churn']) # Labels plus descriptifs
+        
+        plt.tight_layout() # Ajuste automatiquement les paramètres des sous-figures pour qu'elles rentrent dans la zone de la figure.
+        st.pyplot(fig)
+        plt.close(fig)
 
-    if graphique_choisi == 'Taux de désabonnement par variable catégorielle':
+    elif graphique_choisi == 'Taux de désabonnement par variable catégorielle':
+        x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=features_list_df_cleaned_cat)
 
-        x_choisi = st.selectbox(label = '''Choisir une variable d'intérêt''',options = features_list_df_cleaned_cat)
+        fig, ax = plt.subplots(figsize=(12, 7))
 
-        if len(df_cleaned[x_choisi].unique()) > 5:
-            ax = sns.catplot(data = df_cleaned, x = x_choisi, hue = 'Churn', kind = st.selectbox(label = 'Type de graphique', options = ['box','violin','boxen']), aspect = 3)
-            plt.title('Taux de désabonnement en fonction de la variable {}'.format(x_choisi),fontdict = {'fontsize' : 20})
-            ax.set_xticklabels(rotation = 90)
-            st.pyplot(plt)
+        df_crosstab = pd.crosstab(df_cleaned[x_choisi], df_cleaned.Churn, normalize='index') * 100
+        df_crosstab = df_crosstab.reset_index().melt(id_vars = x_choisi, var_name = 'Churn', value_name = 'Percentage')
+        sns.barplot(data = df_crosstab, x = x_choisi, y = 'Percentage', hue = 'Churn', ax = ax) 
+        ax.set_title(f"Taux de désabonnement en fonction de la variable {x_choisi}")
+        # Ajout des pourcentages sur les barres pour une lecture facile
+        for container in ax.containers:
+            ax.bar_label(container, fmt='%.1f%%', label_type='edge', padding=3)
 
-        else:
-            ax = sns.countplot(data = df_cleaned, x = x_choisi, hue = 'Churn', stat = 'percent')
-            plt.title('Taux de désabonnement en fonction de la variable {}'.format(x_choisi), fontdict = {'fontsize' : 20})
-            for container in ax.containers:
-                labels = [f'{float(np.round(x,1))}' for x in container.datavalues]
-                ax.bar_label(container, labels=labels, label_type='edge', padding=3)
-            st.pyplot(plt)
+        # Vérifier si les valeurs uniques sont 0 et 1 pour les changer en "Non" et "Oui"
+        if set(df_cleaned[x_choisi].unique()) == {0, 1}:
+            ax.set_xticks([0, 1]) # Fixe les positions des ticks
+            ax.set_xticklabels(['Non', 'Oui']) # Applique les nouvelles étiquettes
+        elif set(df_cleaned[x_choisi].unique()) == {1, 0}: # Au cas où l'ordre serait inversé
+            ax.set_xticks([0, 1])
+            ax.set_xticklabels(['Oui', 'Non']) # Ajuster selon l'ordre réel des catégories si nécessaire
 
-    if graphique_choisi == 'Proportion':
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close(fig)
+        
 
-        x_choisi = st.selectbox(label = '''Choisir une variable d'intérêt''',options = features_list_df)
-        plt.figure(figsize = (2,2))
-        plt.title('Proportion de la variable {}'.format(x_choisi))
-        plt.pie(x = df[x_choisi].value_counts(), labels= df[x_choisi].value_counts().index, autopct='%1.1f%%', textprops={'fontsize': 7})
-        st.pyplot(plt)
+    elif graphique_choisi == 'Proportion':
+        x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=df.drop('customerID', axis=1).columns)
+        
+        fig, ax = plt.subplots(figsize=(6, 6)) # Agrandir légèrement pour meilleure lisibilité
+        plt.title(f'Proportion de la variable {x_choisi}', fontsize=16)
+        
+        # Obtenir les counts et les index (labels)
+        counts = df[x_choisi].value_counts()
+        labels = counts.index
+        
+        # Utiliser autopct='%1.1f%%' directement dans pie
+        ax.pie(x=counts, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10}, pctdistance=0.85)
+        ax.axis('equal')  # Assure que le cercle est parfait
+        
+        st.pyplot(fig)
+        plt.close(fig)
 
-    if graphique_choisi == 'Corrélation':
-        ax = sns.heatmap(data = df_cleaned.select_dtypes(['int','float']).corr(), annot = True, fmt = '0.2f', annot_kws = {'size' : 10})
-        plt.title('Corrélation entre les différentes variables du jeu de données', fontdict = {'fontsize' : 20})
-        st.pyplot(plt)
+    elif graphique_choisi == 'Corrélation':
+        fig, ax = plt.subplots(figsize=(12, 10)) # Agrandir la heatmap pour plus de lisibilité
+        sns.heatmap(data=df_cleaned.select_dtypes(['int', 'float']).corr(), annot=True, fmt='.2f', annot_kws={'size': 9}, cmap='coolwarm', ax=ax)
+        plt.title('Corrélation entre les différentes variables du jeu de données', fontdict={'fontsize': 18})
+        plt.tight_layout()
+        st.pyplot(fig)
+        plt.close(fig)
 
-if choix_partie == 'IV - Modèle de prédiction du taux de désabonnement des clients':
+# Partie 4 : Modèle de prédiction du taux de désabonnement des clients
+elif choix_partie == 'IV - Modèle de prédiction du taux de désabonnement des clients':
     st.subheader('IV - Modèle de prédiction du taux de désabonnement des clients')
 
-    # Fonction pour charger le modèle
-    @st.cache_resource  # Utilise st.cache_resource pour ne charger le modèle qu'une seule fois
-    def load_model(model_path):
-        loaded_model = joblib.load(model_path)
-        return loaded_model
+    # Fonction pour charger le modèle (avec st.cache_resource pour les objets non-sérialisables comme les modèles)
+    @st.cache_resource
+    def load_ml_model(model_path):
+        return joblib.load(model_path)
 
-    # Chargement du modèle
-    model_lr = load_model('my_model_Logistic Regression.pkl')
-    model_svm = load_model('my_model_Support Vector Machine.pkl')
-    model_dt = load_model('my_model_Decision Tree.pkl')
-    model_rf = load_model('my_model_Random Forest.pkl')
+    @st.cache_data
+    def load_test_data(data_path):
+        return joblib.load(data_path)
 
-    
-    def plot_confusion_matrix(y_true, y_pred, labels):
-        cm = confusion_matrix(y_true, y_pred, labels=labels)
-        fig, ax = plt.subplots()
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels)
-        plt.xlabel('Prédictions')
-        plt.ylabel('Vraies valeurs')
-        return fig
-    
- 
-    def display_model_info(col, title, model, X_test, y_test, labels):
-        col.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 1.2em'>{title}</div>", unsafe_allow_html = True)
-
-        # Affichage du meilleur score (si disponible)
-        if hasattr(model, 'best_score_'):
-            col.markdown(f"<div style='text-align: center;'>Meilleur score : {np.round(model.best_score_, 2)}</div>", unsafe_allow_html=True)
-        else:
-            col.write('Meilleur score : Non disponible')
-
-        # Prédictions sur les données de test
-        y_pred = model.predict(X_test)
-
-        # Affichage de la matrice de confusion
-        col.markdown("<div style='text-align: center; font-weight: bold;'>Matrice de Confusion :</div>", unsafe_allow_html=True)
-        cm_fig = plot_confusion_matrix(y_test, y_pred, labels)
-        col.pyplot(cm_fig)
-
-        # Affichage du classification report imbalanced
-        col.write('**Classification Report Imbalanced:**')
-        target_names_str = [str(label) for label in labels]
-        report_imbalanced_str = classification_report_imbalanced(y_test, y_pred, target_names=target_names_str)
-        col.code(report_imbalanced_str)
-
-        # Affichage des hyperparamètres
-        col.markdown("<div style='text-align: center; font-weight: bold;'>Hyperparamètres :</div>", unsafe_allow_html=True)
-        if hasattr(model, 'best_params_'):
-            for param, value in model.best_params_.items():
-                col.write(f'{param}: {value}')
-        elif hasattr(model, 'get_params'):
-            params = model.get_params()
-            for param, value in params.items():
-                col.write(f'{param}: {value}')
-        else:
-            col.write('Hyperparamètres : Non disponibles')
-
-    # --- Configuration principale de Streamlit ---
-    st.title("Comparaison des Modèles de Classification")
-
-    # Charger les données de test (assure-toi que les chemins sont corrects)
     try:
-        x_test = joblib.load('x_test')
-        y_test = joblib.load('y_test')
+        x_test = load_test_data('x_test')
+        y_test = load_test_data('y_test')
     except FileNotFoundError:
-        st.error("Les fichiers de données ou de labels sont introuvables. Veuillez vérifier les chemins.")
+        st.error("Les fichiers `x_test` ou `y_test` sont introuvables. Assurez-vous qu'ils sont dans le même répertoire que votre script.")
         st.stop()
 
-    # Charger les modèles (assure-toi que les chemins sont corrects)
+    # Charger les modèles
     try:
-        model_lr = joblib.load('my_model_Logistic Regression.pkl')
-        model_svm = joblib.load('my_model_Support Vector Machine.pkl')
-        model_dt = joblib.load('my_model_Decision Tree.pkl')
-        model_rf = joblib.load('my_model_Random Forest.pkl')
+        model_lr = load_ml_model('my_model_Logistic Regression.pkl')
+        model_svm = load_ml_model('my_model_Support Vector Machine.pkl')
+        model_dt = load_ml_model('my_model_Decision Tree.pkl')
+        model_rf = load_ml_model('my_model_Random Forest.pkl')
     except FileNotFoundError:
         st.error("Un ou plusieurs fichiers de modèle sont introuvables. Veuillez vérifier les chemins.")
         st.stop()
 
-    # Créer les quatre colonnes
+    def plot_confusion_matrix(y_true, y_pred, labels):
+        cm = confusion_matrix(y_true, y_pred, labels=labels)
+        fig, ax = plt.subplots(figsize=(6, 5)) # Taille fixe pour la matrice
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=labels, yticklabels=labels, ax=ax)
+        ax.set_xlabel('Prédictions')
+        ax.set_ylabel('Vraies valeurs')
+        ax.set_title('Matrice de Confusion')
+        return fig
+
+    def display_model_info(col_st, title, model, X_test_data, y_test_data, labels_data):
+        col_st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 1.2em'>{title}</div>", unsafe_allow_html=True)
+
+        if hasattr(model, 'best_score_'):
+            col_st.markdown(f"<div style='text-align: center;'>Meilleur score : **{np.round(model.best_score_, 4)}**</div>", unsafe_allow_html=True)
+        else:
+            col_st.info('Meilleur score : Non disponible (le modèle n\'a pas d\'attribut best_score_)')
+
+        y_pred = model.predict(X_test_data)
+
+        col_st.markdown("<div style='text-align: center; font-weight: bold;'>Matrice de Confusion :</div>", unsafe_allow_html=True)
+        cm_fig = plot_confusion_matrix(y_test_data, y_pred, labels_data)
+        col_st.pyplot(cm_fig)
+        plt.close(cm_fig) # Fermer la figure
+
+        col_st.write('**Classification Report Imbalanced:**')
+        target_names_str = [str(label) for label in labels_data]
+        report_imbalanced_str = classification_report_imbalanced(y_test_data, y_pred, target_names=target_names_str)
+        col_st.code(report_imbalanced_str)
+
+        col_st.markdown("<div style='text-align: center; font-weight: bold;'>Hyperparamètres :</div>", unsafe_allow_html=True)
+        if hasattr(model, 'best_params_'):
+            for param, value in model.best_params_.items():
+                col_st.write(f'**{param}**: {value}')
+        elif hasattr(model, 'get_params'):
+            params = model.get_params()
+            for param, value in params.items():
+                col_st.write(f'**{param}**: {value}')
+        else:
+            col_st.info('Hyperparamètres : Non disponibles')
+
+    st.title("Comparaison des Modèles de Classification")
+
     col1, col2, col3, col4 = st.columns(4)
 
-    # Afficher les informations pour chaque modèle
-    display_model_info(col1, 'Logistic Regression', model_lr, x_test, y_test, labels = [0,1])
-    display_model_info(col2, 'Support Vector Machine', model_svm, x_test, y_test, labels = [0,1])
-    display_model_info(col3, 'Decision Tree', model_dt, x_test, y_test, labels = [0,1])
-    display_model_info(col4, 'Random Forest', model_rf, x_test, y_test, labels = [0,1])
+    labels_churn = [0, 1] # Assurez-vous que c'est cohérent avec vos données
 
-    st.markdown("<div style='text-align: center; font-size: 1.2em; font-weight: bold'>Feature Importances</div>", unsafe_allow_html = True)
+    display_model_info(col1, 'Logistic Regression', model_lr, x_test, y_test, labels_churn)
+    display_model_info(col2, 'Support Vector Machine', model_svm, x_test, y_test, labels_churn)
+    display_model_info(col3, 'Decision Tree', model_dt, x_test, y_test, labels_churn)
+    display_model_info(col4, 'Random Forest', model_rf, x_test, y_test, labels_churn)
+
+    st.markdown("---")
+    st.markdown("<div style='text-align: center; font-size: 1.5em; font-weight: bold'>Feature Importances</div>", unsafe_allow_html=True)
     st.markdown("\n")
 
-   
-    col1,col2 = st.columns(2)
-    with col1:
-        st.image('Feature_importances.png', use_container_width = False, width = 600)
-    with col2:
-        st.markdown("Les variables les plus importantes dans le choix que réalise le modèle sur la classification binaire semblent être **streamingmovies_yes** (le client a l'option film en streaming), **tenure** (nb de mois que le client est abonné), **totalcharges** et **monthly charges** (les charges mensuelles et depuis le début de l'abonnement).")
-        st.markdown("Ces 4 variables représentent plus de **50%** de l'explication du choix du modèle dans la classification churner. Les autres variables ont un impact plus faible (- de 6%)")
+    col_img, col_text = st.columns([1.5, 1]) # Ajuster la largeur des colonnes
+    with col_img:
+        if os.path.exists('Feature_importances.png'):
+            st.image('Feature_importances.png', use_container_width=True) # Utiliser toute la largeur de la colonne
+        else:
+            st.warning("L'image 'Feature_importances.png' est introuvable. Veuillez vous assurer qu'elle est dans le même répertoire.")
+    with col_text:
+        st.markdown("""
+        Les variables les plus importantes dans le choix que réalise le modèle sur la classification binaire semblent être :
+        - **`streamingmovies_yes`** (le client a l'option film en streaming)
+        - **`tenure`** (nombre de mois que le client est abonné)
+        - **`totalcharges`** et **`monthly charges`** (les charges mensuelles et depuis le début de l'abonnement).
+        \nCes 4 variables représentent plus de **50%** de l'explication du choix du modèle dans la classification churn. Les autres variables ont un impact plus faible (moins de 6%).
+        """)
 
-
-
-
-if choix_partie == 'V - Conclusion et Perspectives':
+# Partie 5 : Conclusion et Perspectives
+elif choix_partie == 'V - Conclusion et Perspectives':
     st.subheader('V - Conclusion et Perspectives')
 
+    st.markdown("---")
     st.markdown("#### Conclusion")
     st.markdown("""
     Cette exploration et modélisation du taux de désabonnement des clients de télécommunication a permis de mettre en lumière plusieurs aspects cruciaux. L'analyse des données brutes a révélé des défis initiaux concernant le type de certaines variables et la présence de quelques valeurs manquantes, qui ont été adressés par un pré-traitement ciblé.
@@ -311,6 +356,7 @@ if choix_partie == 'V - Conclusion et Perspectives':
     La comparaison de différents modèles de classification (Régression Logistique, Support Vector Machine, Arbre de Décision et Forêt Aléatoire) a permis d'évaluer leur performance dans la prédiction du 'Churn'. L'examen des matrices de confusion, des rapports de classification et des hyperparamètres optimisés fournit une base solide pour choisir le modèle le plus adapté aux objectifs de l'entreprise. Il est notable que certaines variables, telles que la présence de l'option 'streamingmovies_yes', la durée d'abonnement ('tenure') et les charges ('totalcharges' et 'monthly charges'), se sont avérées être des indicateurs clés dans les décisions des modèles.
     """)
 
+    st.markdown("---")
     st.markdown("#### Perspectives")
     st.markdown("""
     Forts de ces résultats, plusieurs pistes d'action et de développement peuvent être envisagées :

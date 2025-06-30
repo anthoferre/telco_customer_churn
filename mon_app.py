@@ -8,12 +8,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import io
 from sklearn.metrics import confusion_matrix, classification_report, recall_score
-from imblearn.metrics import classification_report_imbalanced
 
 # Configuration de Seaborn
 sns.set_theme(style="whitegrid") # Utiliser un thème plus léger et souvent plus rapide à rendre
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title = 'Customer_Churn')
 
 # Masquer le menu de Streamlit et le bouton de déploiement
 hide_streamlit_style = """
@@ -24,8 +23,6 @@ hide_streamlit_style = """
     </style>
     """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
-st.title("Taux de désabonnements des clients de télécommunication")
 
 # --- Fonctions de chargement des données avec cache ---
 
@@ -54,6 +51,32 @@ def get_cleaned_features_lists(dataframe):
 
 features_list_df_cleaned_num, features_list_df_cleaned_cat = get_cleaned_features_lists(df_cleaned)
 
+# Fonction pour charger le modèle (avec st.cache_resource pour les objets non-sérialisables comme les modèles)
+@st.cache_resource
+def load_ml_model(model_path):
+    return joblib.load(model_path)
+
+@st.cache_data
+def load_test_data(data_path):
+    return joblib.load(data_path)
+
+try:
+    x_test = load_test_data('x_test')
+    y_test = load_test_data('y_test')
+except FileNotFoundError:
+    st.error("Les fichiers `x_test` ou `y_test` sont introuvables. Assurez-vous qu'ils sont dans le même répertoire que votre script.")
+    st.stop()
+
+# Charger les modèles
+try:
+    model_lr = load_ml_model('my_model_Logistic Regression.pkl')
+    model_svm = load_ml_model('my_model_Support Vector Machine.pkl')
+    model_dt = load_ml_model('my_model_Decision Tree.pkl')
+    model_rf = load_ml_model('my_model_Random Forest.pkl')
+except FileNotFoundError:
+    st.error("Un ou plusieurs fichiers de modèle sont introuvables. Veuillez vérifier les chemins.")
+    st.stop()
+
 # --- Barre latérale pour la navigation ---
 choix_partie = st.sidebar.radio(
     "Sommaire",
@@ -61,8 +84,9 @@ choix_partie = st.sidebar.radio(
         "I - Introduction",
         "II - Exploration des données",
         "III - Data visualization",
-        "IV - Modèle de prédiction du taux de désabonnement des clients",
-        "V - Conclusion et Perspectives"
+        "IV - Les différents modèles de prédiction du taux de désabonnement des clients",
+        'V - Etude de cas',
+        "VI - Conclusion et Perspectives"
     ]
 )
 
@@ -70,6 +94,7 @@ choix_partie = st.sidebar.radio(
 
 # Partie 1 : Introduction
 if choix_partie == 'I - Introduction':
+    st.title("Taux de désabonnements des clients de télécommunication")
     st.subheader('I - Introduction')
     st.image('https://vertone.com/wp-content/uploads/2018/12/adobestock_436800241-scaled.jpeg', use_container_width=False)
     st.markdown("""
@@ -158,129 +183,107 @@ elif choix_partie == 'III - Data visualization':
         "Corrélation"
     ]
     
-    graphique_choisi = st.radio("Quel est le type d'analyse graphique souhaitée?", type_graphique)
+    col1, col2 = st.columns([1.5,2.5])
+    with col1:
+        graphique_choisi = st.radio("Quel est le type d'analyse graphique souhaitée?", type_graphique)
+    
+    with col2:
+        if graphique_choisi == "Distribution d'une variable":
 
-    if graphique_choisi == "Distribution d'une variable":
-        x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=df_cleaned.columns)
+            x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=df_cleaned.columns)
         
-        fig, ax = plt.subplots(figsize=(10, 6))
-        if df_cleaned[x_choisi].nunique() > 5: # Utiliser nunique pour distinguer numérique/catégorielle avec plusieurs valeurs
-            sns.histplot(df_cleaned[x_choisi], stat='percent', ax=ax)
-            ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
-            ax.set_ylabel('Pourcentage')
-        else:
-            sns.countplot(x=df_cleaned[x_choisi], hue=df_cleaned[x_choisi], stat='percent', palette='viridis', ax=ax, legend=False)
-            ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
-            ax.set_ylabel('Pourcentage')
+            fig, ax = plt.subplots(figsize=(10, 6))
+            if df_cleaned[x_choisi].nunique() > 5: # Utiliser nunique pour distinguer numérique/catégorielle avec plusieurs valeurs
+                sns.histplot(df_cleaned[x_choisi], stat='percent', ax=ax)
+                ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
+                ax.set_ylabel('Pourcentage')
+            else:
+                sns.countplot(x=df_cleaned[x_choisi], hue=df_cleaned[x_choisi], stat='percent', palette='viridis', ax=ax, legend=False)
+                ax.set_title(f'Distribution de la variable {x_choisi}', fontsize=16)
+                ax.set_ylabel('Pourcentage')
+                for container in ax.containers:
+                    ax.bar_label(container, fmt='%.1f%%', label_type='edge', padding=3)
+            st.pyplot(fig)
+            plt.close(fig) # Fermer la figure pour libérer de la mémoire
+
+        if graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
+            x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=features_list_df_cleaned_num)
+            
+            fig, axes = plt.subplots(1, 2, figsize=(18, 7)) # Agrandir légèrement pour la clarté
+
+            sns.histplot(data=df_cleaned, x=x_choisi, hue='Churn', multiple='fill', bins=20, ax=axes[0], palette='coolwarm')
+            axes[0].set_title(f'Distribution du Churn par {x_choisi}', fontsize=14)
+            axes[0].set_xlabel(f'{x_choisi}')
+            axes[0].set_ylabel('Proportion de Churn')
+            axes[0].set_yticks(np.arange(0, 1.1, 0.2))
+            axes[0].set_yticklabels([f'{int(p*100)}%' for p in np.arange(0, 1.1, 0.2)])
+            axes[0].legend(title='Churn', labels=['Non', 'Oui']) # S'assurer que les labels de légende sont clairs
+
+            sns.boxplot(data=df_cleaned, y=x_choisi, hue='Churn', ax=axes[1], palette='Set2')
+            axes[1].set_title(f'Distribution de {x_choisi} par Statut de Churn', fontsize=14)
+            axes[1].set_xlabel('Statut de Churn')
+            axes[1].set_ylabel(f'{x_choisi}')
+            axes[1].set_xticks([0, 1])
+            axes[1].set_xticklabels(['Non-Churn', 'Churn']) # Labels plus descriptifs
+            
+            plt.tight_layout() # Ajuste automatiquement les paramètres des sous-figures pour qu'elles rentrent dans la zone de la figure.
+            st.pyplot(fig)
+            plt.close(fig)
+
+        elif graphique_choisi == 'Taux de désabonnement par variable catégorielle':
+            x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=features_list_df_cleaned_cat)
+
+            fig, ax = plt.subplots(figsize=(12, 7))
+
+            df_crosstab = pd.crosstab(df_cleaned[x_choisi], df_cleaned.Churn, normalize='index') * 100
+            df_crosstab = df_crosstab.reset_index().melt(id_vars = x_choisi, var_name = 'Churn', value_name = 'Percentage')
+            sns.barplot(data = df_crosstab, x = x_choisi, y = 'Percentage', hue = 'Churn', ax = ax) 
+            ax.set_title(f"Taux de désabonnement en fonction de la variable {x_choisi}")
+            # Ajout des pourcentages sur les barres pour une lecture facile
             for container in ax.containers:
                 ax.bar_label(container, fmt='%.1f%%', label_type='edge', padding=3)
-        st.pyplot(fig)
-        plt.close(fig) # Fermer la figure pour libérer de la mémoire
 
-    elif graphique_choisi == 'Distribution des variables numériques par statut de désabonnement':
-        x_choisi = st.selectbox(label='Choisir une variable en abscisse', options=features_list_df_cleaned_num)
-        
-        fig, axes = plt.subplots(1, 2, figsize=(18, 7)) # Agrandir légèrement pour la clarté
+            # Vérifier si les valeurs uniques sont 0 et 1 pour les changer en "Non" et "Oui"
+            if set(df_cleaned[x_choisi].unique()) == {0, 1}:
+                ax.set_xticks([0, 1]) # Fixe les positions des ticks
+                ax.set_xticklabels(['Non', 'Oui']) # Applique les nouvelles étiquettes
+            elif set(df_cleaned[x_choisi].unique()) == {1, 0}: # Au cas où l'ordre serait inversé
+                ax.set_xticks([0, 1])
+                ax.set_xticklabels(['Oui', 'Non']) # Ajuster selon l'ordre réel des catégories si nécessaire
 
-        sns.histplot(data=df_cleaned, x=x_choisi, hue='Churn', multiple='fill', bins=20, ax=axes[0], palette='coolwarm')
-        axes[0].set_title(f'Distribution du Churn par {x_choisi}', fontsize=14)
-        axes[0].set_xlabel(f'{x_choisi}')
-        axes[0].set_ylabel('Proportion de Churn')
-        axes[0].set_yticks(np.arange(0, 1.1, 0.2))
-        axes[0].set_yticklabels([f'{int(p*100)}%' for p in np.arange(0, 1.1, 0.2)])
-        axes[0].legend(title='Churn', labels=['Non', 'Oui']) # S'assurer que les labels de légende sont clairs
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.close(fig)
+            
 
-        sns.boxplot(data=df_cleaned, y=x_choisi, hue='Churn', ax=axes[1], palette='Set2')
-        axes[1].set_title(f'Distribution de {x_choisi} par Statut de Churn', fontsize=14)
-        axes[1].set_xlabel('Statut de Churn')
-        axes[1].set_ylabel(f'{x_choisi}')
-        axes[1].set_xticks([0, 1])
-        axes[1].set_xticklabels(['Non-Churn', 'Churn']) # Labels plus descriptifs
-        
-        plt.tight_layout() # Ajuste automatiquement les paramètres des sous-figures pour qu'elles rentrent dans la zone de la figure.
-        st.pyplot(fig)
-        plt.close(fig)
+        elif graphique_choisi == 'Proportion':
+            x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=df.drop('customerID', axis=1).columns)
+            
+            fig, ax = plt.subplots(figsize=(6, 6)) # Agrandir légèrement pour meilleure lisibilité
+            plt.title(f'Proportion de la variable {x_choisi}', fontsize=16)
+            
+            # Obtenir les counts et les index (labels)
+            counts = df[x_choisi].value_counts()
+            labels = counts.index
+            
+            # Utiliser autopct='%1.1f%%' directement dans pie
+            ax.pie(x=counts, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10}, pctdistance=0.85)
+            ax.axis('equal')  # Assure que le cercle est parfait
+            
+            st.pyplot(fig)
+            plt.close(fig)
 
-    elif graphique_choisi == 'Taux de désabonnement par variable catégorielle':
-        x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=features_list_df_cleaned_cat)
-
-        fig, ax = plt.subplots(figsize=(12, 7))
-
-        df_crosstab = pd.crosstab(df_cleaned[x_choisi], df_cleaned.Churn, normalize='index') * 100
-        df_crosstab = df_crosstab.reset_index().melt(id_vars = x_choisi, var_name = 'Churn', value_name = 'Percentage')
-        sns.barplot(data = df_crosstab, x = x_choisi, y = 'Percentage', hue = 'Churn', ax = ax) 
-        ax.set_title(f"Taux de désabonnement en fonction de la variable {x_choisi}")
-        # Ajout des pourcentages sur les barres pour une lecture facile
-        for container in ax.containers:
-            ax.bar_label(container, fmt='%.1f%%', label_type='edge', padding=3)
-
-        # Vérifier si les valeurs uniques sont 0 et 1 pour les changer en "Non" et "Oui"
-        if set(df_cleaned[x_choisi].unique()) == {0, 1}:
-            ax.set_xticks([0, 1]) # Fixe les positions des ticks
-            ax.set_xticklabels(['Non', 'Oui']) # Applique les nouvelles étiquettes
-        elif set(df_cleaned[x_choisi].unique()) == {1, 0}: # Au cas où l'ordre serait inversé
-            ax.set_xticks([0, 1])
-            ax.set_xticklabels(['Oui', 'Non']) # Ajuster selon l'ordre réel des catégories si nécessaire
-
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-        
-
-    elif graphique_choisi == 'Proportion':
-        x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=df.drop('customerID', axis=1).columns)
-        
-        fig, ax = plt.subplots(figsize=(6, 6)) # Agrandir légèrement pour meilleure lisibilité
-        plt.title(f'Proportion de la variable {x_choisi}', fontsize=16)
-        
-        # Obtenir les counts et les index (labels)
-        counts = df[x_choisi].value_counts()
-        labels = counts.index
-        
-        # Utiliser autopct='%1.1f%%' directement dans pie
-        ax.pie(x=counts, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10}, pctdistance=0.85)
-        ax.axis('equal')  # Assure que le cercle est parfait
-        
-        st.pyplot(fig)
-        plt.close(fig)
-
-    elif graphique_choisi == 'Corrélation':
-        fig, ax = plt.subplots(figsize=(12, 10)) # Agrandir la heatmap pour plus de lisibilité
-        sns.heatmap(data=df_cleaned.select_dtypes(['int', 'float']).corr(), annot=True, fmt='.2f', annot_kws={'size': 9}, cmap='coolwarm', ax=ax)
-        plt.title('Corrélation entre les différentes variables du jeu de données', fontdict={'fontsize': 18})
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
+        elif graphique_choisi == 'Corrélation':
+            fig, ax = plt.subplots(figsize=(12, 10)) # Agrandir la heatmap pour plus de lisibilité
+            sns.heatmap(data=df_cleaned.select_dtypes(['int', 'float']).corr(), annot=True, fmt='.2f', annot_kws={'size': 9}, cmap='coolwarm', ax=ax)
+            plt.title('Corrélation entre les différentes variables du jeu de données', fontdict={'fontsize': 18})
+            plt.tight_layout()
+            st.pyplot(fig)
+            plt.close(fig)
 
 # Partie 4 : Modèle de prédiction du taux de désabonnement des clients
-elif choix_partie == 'IV - Modèle de prédiction du taux de désabonnement des clients':
-    st.subheader('IV - Modèle de prédiction du taux de désabonnement des clients')
-
-    # Fonction pour charger le modèle (avec st.cache_resource pour les objets non-sérialisables comme les modèles)
-    @st.cache_resource
-    def load_ml_model(model_path):
-        return joblib.load(model_path)
-
-    @st.cache_data
-    def load_test_data(data_path):
-        return joblib.load(data_path)
-
-    try:
-        x_test = load_test_data('x_test')
-        y_test = load_test_data('y_test')
-    except FileNotFoundError:
-        st.error("Les fichiers `x_test` ou `y_test` sont introuvables. Assurez-vous qu'ils sont dans le même répertoire que votre script.")
-        st.stop()
-
-    # Charger les modèles
-    try:
-        model_lr = load_ml_model('my_model_Logistic Regression.pkl')
-        model_svm = load_ml_model('my_model_Support Vector Machine.pkl')
-        model_dt = load_ml_model('my_model_Decision Tree.pkl')
-        model_rf = load_ml_model('my_model_Random Forest.pkl')
-    except FileNotFoundError:
-        st.error("Un ou plusieurs fichiers de modèle sont introuvables. Veuillez vérifier les chemins.")
-        st.stop()
+elif choix_partie == 'IV - Les différents modèles de prédiction du taux de désabonnement des clients':
+    st.subheader('IV - Les différents modèles de prédiction du taux de désabonnement des clients')
 
     def plot_confusion_matrix(y_true, y_pred, labels):
         cm = confusion_matrix(y_true, y_pred, labels=labels)
@@ -338,15 +341,108 @@ elif choix_partie == 'IV - Modèle de prédiction du taux de désabonnement des 
     with col_text:
         st.markdown("""
         Les variables les plus importantes dans le choix que réalise le modèle sur la classification binaire semblent être :
-        - **`streamingmovies_yes`** (le client a l'option film en streaming)
-        - **`tenure`** (nombre de mois que le client est abonné)
-        - **`totalcharges`** et **`monthly charges`** (les charges mensuelles et depuis le début de l'abonnement).
+        **`contract_month_to_month`** (le client paye l'abonnement mois par mois)
+        **`tenure`** (nombre de mois que le client est abonné)
+        **`totalcharges`** et **`monthly charges`** (les charges mensuelles et depuis le début de l'abonnement).
         \nCes 4 variables représentent plus de **50%** de l'explication du choix du modèle dans la classification churn. Les autres variables ont un impact plus faible (moins de 6%).
         """)
 
-# Partie 5 : Conclusion et Perspectives
-elif choix_partie == 'V - Conclusion et Perspectives':
-    st.subheader('V - Conclusion et Perspectives')
+# Partie 5 : Etude de cas sur de nouvelles données
+elif choix_partie == 'V - Etude de cas':
+        # --- 3. Définir les features et leurs plages/options ---
+    # Ces informations doivent correspondre aux features utilisées lors de l'entraînement du modèle
+    features_info = {
+        'Tenure': {'type': 'slider', 'min': 0, 'max': 72, 'default': 30, 'step': 1, 'label': 'Ancienneté (mois)'},
+        'MonthlyCharges': {'type': 'slider', 'min': 18.0, 'max': 120.0, 'default': 50.0, 'step': 0.5, 'label': 'Frais Mensuels (€)'},
+        'TotalCharges': {'type': 'number_input', 'min': 0.0, 'max': 9000.0, 'default': 1500.0, 'step': 10.0, 'label': 'Frais Totaux (€)'},
+        'Gender': {'type': 'radio', 'options': ['Male', 'Female'], 'default': 'Male', 'label': 'Genre'},
+        'InternetService': {'type': 'selectbox', 'options': ['DSL', 'Fiber optic', 'No'], 'default': 'Fiber optic', 'label': 'Service Internet'},
+        'Contract': {'type': 'selectbox', 'options': ['Month-to-month', 'One year', 'Two year'], 'default': 'Month-to-month', 'label': 'Contrat'},
+        'Partner': {'type': 'radio', 'options': ['Yes', 'No'], 'default': 'No', 'label': 'Partenaire'},
+        'Dependents': {'type': 'radio', 'options': ['Yes', 'No'], 'default': 'No', 'label': 'Dépendants'},
+        # Ajoute d'autres features pertinentes de ton modèle
+    }
+
+    # --- 4. Créer les widgets dans la barre latérale ---
+    st.sidebar.header("Paramètres du Client Hypothétique")
+    input_data = {}
+
+    for feature, info in features_info.items():
+        if info['type'] == 'slider':
+            input_data[feature] = st.sidebar.slider(
+                label=info['label'],
+                min_value=info['min'],
+                max_value=info['max'],
+                value=info['default'],
+                step=info['step']
+            )
+        elif info['type'] == 'number_input':
+            input_data[feature] = st.sidebar.number_input(
+                label=info['label'],
+                min_value=info['min'],
+                max_value=info['max'],
+                value=info['default'],
+                step=info['step']
+            )
+        elif info['type'] == 'selectbox':
+            input_data[feature] = st.sidebar.selectbox(
+                label=info['label'],
+                options=info['options'],
+                index=info['options'].index(info['default']) # Pour que la valeur par défaut soit sélectionnée
+            )
+        elif info['type'] == 'radio':
+            input_data[feature] = st.sidebar.radio(
+                label=info['label'],
+                options=info['options'],
+                index=info['options'].index(info['default'])
+            )
+
+    all_model_features = [col for col in df_cleaned.columns if (col != 'Churn' and col != 'Charges_rate')]
+
+    for feature in all_model_features:
+        if feature not in input_data: # Si la feature n'a pas été définie par un widget
+            # Calculer le mode de cette colonne depuis le DataFrame original
+            # .mode()[0] est utilisé car .mode() peut renvoyer plusieurs modes s'il y a des ex-aequo
+            mode_value = df_cleaned[feature].mode()[0]
+            input_data[feature] = mode_value
+
+    # --- 5. Construire le DataFrame pour la prédiction ---
+    # Créer un DataFrame avec une seule ligne à partir des inputs de l'utilisateur
+    # Il est crucial que les noms de colonnes correspondent exactement à ceux utilisés lors de l'entraînement
+    input_df = pd.DataFrame([input_data])
+
+    # --- 6. Faire la prédiction ---
+    if st.button("Prédire le Désabonnement"): # Ajout d'un bouton pour déclencher la prédiction
+        st.subheader("Résultat de la Prédiction")
+        # Utilisation de try-except pour attraper d'éventuelles erreurs de prédiction
+        try:
+            # predict_proba renvoie les probabilités pour chaque classe (non-churn, churn)
+            prediction_proba = model_rf.predict_proba(input_df)[0]
+            # predict renvoie la classe prédite (0 ou 1)
+            prediction_class = model_rf.predict(input_df)[0]
+
+            churn_probability = prediction_proba[1] # Probabilité de la classe 1 (churn)
+            non_churn_probability = prediction_proba[0] # Probabilité de la classe 0 (non-churn)
+
+            st.write(f"Probabilité de **Non-Désabonnement** : **`{non_churn_probability:.2%}`**")
+            st.write(f"Probabilité de **Désabonnement (Churn)** : **`{churn_probability:.2%}`**")
+
+            if prediction_class == 1:
+                st.error("Ce client hypothétique est **susceptible de se désabonner**.")
+            else:
+                st.success("Ce client hypothétique est **peu susceptible de se désabonner**.")
+
+            st.markdown("---")
+            st.write("Détails de l'instance client générée :")
+            st.dataframe(input_df)
+
+        except Exception as e:
+            st.error(f"Une erreur est survenue lors de la prédiction : {e}")
+            st.write("Veuillez vérifier que les types de données et les noms de colonnes correspondent à ceux attendus par le modèle.")
+
+# Partie 6 : Conclusion et Perspectives
+elif choix_partie == 'VI - Conclusion et Perspectives':
+    st.subheader('VI - Conclusion et Perspectives')
 
     st.markdown("---")
     st.markdown("#### Conclusion")

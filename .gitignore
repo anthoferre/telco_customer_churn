@@ -1,5 +1,29 @@
-.venv/
+# Fichiers et dossiers spécifiques à Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.pkl
 *.png
 x_test
 y_test
+.Python
+env/
+venv/
+.venv/  # Votre environnement virtuel
+
+# Fichiers spécifiques aux bases de données
+*.db     # Pour SQLite, par exemple sql_app.db
+*.sqlite
+*.sqlite3
+
+# Fichiers de configuration sensibles ou spécifiques à l'environnement
+.env     # Contient des clés secrètes, mots de passe, etc. NE JAMAIS COMMITER
+.vscode/ # Dossier de configuration de VS Code (optionnel, si vous ne voulez pas le partager)
+
+# Fichiers et dossiers de tests
+.pytest_cache/
+.coverage
+
+# Logs
+*.log

@@ -45,8 +45,8 @@ df_cleaned = load_dataframe('df_telco_customer_churn.pkl')
 @st.cache_data
 def get_cleaned_features_lists(dataframe):
     """Prépare les listes de variables numériques et catégorielles."""
-    features_num = [col for col in dataframe.columns if dataframe[col].nunique() > 2]
-    features_cat = [col for col in dataframe.columns if dataframe[col].nunique() <= 2]
+    features_num = [col for col in dataframe.select_dtypes(['int','float']) if dataframe.select_dtypes(['int','float'])[col].nunique() > 2]
+    features_cat = [col for col in dataframe.columns if dataframe[col].nunique() <= 10]
     return features_num, features_cat
 
 features_list_df_cleaned_num, features_list_df_cleaned_cat = get_cleaned_features_lists(df_cleaned)
@@ -73,6 +73,7 @@ try:
     model_svm = load_ml_model('my_model_Support Vector Machine.pkl')
     model_dt = load_ml_model('my_model_Decision Tree.pkl')
     model_rf = load_ml_model('my_model_Random Forest.pkl')
+    churn_model = load_ml_model('churn_model.pkl')
 except FileNotFoundError:
     st.error("Un ou plusieurs fichiers de modèle sont introuvables. Veuillez vérifier les chemins.")
     st.stop()
@@ -104,7 +105,7 @@ if choix_partie == 'I - Introduction':
 
 # Partie 2 : Exploration des données
 elif choix_partie == 'II - Exploration des données':
-    st.subheader('II - Exploration des données') 
+    st.title('II - Exploration des données') 
     st.dataframe(df.head())
 
     col1, col2 = st.columns(2)
@@ -173,7 +174,7 @@ df = df.rename(columns={"OnlineSecurity_No internet service" : "No_internet_serv
 
 # Partie 3 : Data Visualization
 elif choix_partie == 'III - Data visualization':
-    st.subheader('III - Data visualization')
+    st.title('III - Data visualization')
 
     type_graphique = [
         "Distribution d'une variable",
@@ -257,24 +258,24 @@ elif choix_partie == 'III - Data visualization':
             
 
         elif graphique_choisi == 'Proportion':
-            x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=df.drop('customerID', axis=1).columns)
+            x_choisi = st.selectbox(label='Choisir une variable d\'intérêt', options=features_list_df_cleaned_cat)
             
-            fig, ax = plt.subplots(figsize=(6, 6)) # Agrandir légèrement pour meilleure lisibilité
+            fig, ax = plt.subplots(figsize=(2, 2)) # Agrandir légèrement pour meilleure lisibilité
             plt.title(f'Proportion de la variable {x_choisi}', fontsize=16)
             
             # Obtenir les counts et les index (labels)
-            counts = df[x_choisi].value_counts()
+            counts = df_cleaned[x_choisi].value_counts()
             labels = counts.index
             
             # Utiliser autopct='%1.1f%%' directement dans pie
-            ax.pie(x=counts, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 10}, pctdistance=0.85)
+            ax.pie(x=counts, labels=labels, autopct='%1.1f%%', startangle=90, textprops={'fontsize': 7}, pctdistance=0.7)
             ax.axis('equal')  # Assure que le cercle est parfait
             
             st.pyplot(fig)
             plt.close(fig)
 
         elif graphique_choisi == 'Corrélation':
-            fig, ax = plt.subplots(figsize=(12, 10)) # Agrandir la heatmap pour plus de lisibilité
+            fig, ax = plt.subplots(figsize=(7, 5)) # Agrandir la heatmap pour plus de lisibilité
             sns.heatmap(data=df_cleaned.select_dtypes(['int', 'float']).corr(), annot=True, fmt='.2f', annot_kws={'size': 9}, cmap='coolwarm', ax=ax)
             plt.title('Corrélation entre les différentes variables du jeu de données', fontdict={'fontsize': 18})
             plt.tight_layout()
@@ -283,7 +284,7 @@ elif choix_partie == 'III - Data visualization':
 
 # Partie 4 : Modèle de prédiction du taux de désabonnement des clients
 elif choix_partie == 'IV - Les différents modèles de prédiction du taux de désabonnement des clients':
-    st.subheader('IV - Les différents modèles de prédiction du taux de désabonnement des clients')
+    st.title('IV - Les différents modèles de prédiction du taux de désabonnement des clients')
 
     def plot_confusion_matrix(y_true, y_pred, labels):
         cm = confusion_matrix(y_true, y_pred, labels=labels)
@@ -349,6 +350,7 @@ elif choix_partie == 'IV - Les différents modèles de prédiction du taux de d�
 
 # Partie 5 : Etude de cas sur de nouvelles données
 elif choix_partie == 'V - Etude de cas':
+    st.title('V - Etude de cas')
         # --- 3. Définir les features et leurs plages/options ---
     # Ces informations doivent correspondre aux features utilisées lors de l'entraînement du modèle
     features_info = {
@@ -417,9 +419,9 @@ elif choix_partie == 'V - Etude de cas':
         # Utilisation de try-except pour attraper d'éventuelles erreurs de prédiction
         try:
             # predict_proba renvoie les probabilités pour chaque classe (non-churn, churn)
-            prediction_proba = model_rf.predict_proba(input_df)[0]
+            prediction_proba = churn_model.predict_proba(input_df)[0]
             # predict renvoie la classe prédite (0 ou 1)
-            prediction_class = model_rf.predict(input_df)[0]
+            prediction_class = churn_model.predict(input_df)[0]
 
             churn_probability = prediction_proba[1] # Probabilité de la classe 1 (churn)
             non_churn_probability = prediction_proba[0] # Probabilité de la classe 0 (non-churn)
@@ -442,7 +444,7 @@ elif choix_partie == 'V - Etude de cas':
 
 # Partie 6 : Conclusion et Perspectives
 elif choix_partie == 'VI - Conclusion et Perspectives':
-    st.subheader('VI - Conclusion et Perspectives')
+    st.title('VI - Conclusion et Perspectives')
 
     st.markdown("---")
     st.markdown("#### Conclusion")
@@ -451,7 +453,7 @@ elif choix_partie == 'VI - Conclusion et Perspectives':
 
     La visualisation des données a ensuite offert des insights précieux sur la distribution des différentes caractéristiques et leur relation avec la variable cible 'Churn'. Des tendances claires se sont dégagées, suggérant que certains facteurs comme la durée d'abonnement, les charges mensuelles et totales, ainsi que l'utilisation de certains services (comme le streaming de films) sont fortement corrélés au désabonnement.
 
-    La comparaison de différents modèles de classification (Régression Logistique, Support Vector Machine, Arbre de Décision et Forêt Aléatoire) a permis d'évaluer leur performance dans la prédiction du 'Churn'. L'examen des matrices de confusion, des rapports de classification et des hyperparamètres optimisés fournit une base solide pour choisir le modèle le plus adapté aux objectifs de l'entreprise. Il est notable que certaines variables, telles que la présence de l'option 'streamingmovies_yes', la durée d'abonnement ('tenure') et les charges ('totalcharges' et 'monthly charges'), se sont avérées être des indicateurs clés dans les décisions des modèles.
+    La comparaison de différents modèles de classification (Régression Logistique, Support Vector Machine, Arbre de Décision et Forêt Aléatoire) a permis d'évaluer leur performance dans la prédiction du 'Churn'. L'examen des matrices de confusion, des rapports de classification et des hyperparamètres optimisés fournit une base solide pour choisir le modèle le plus adapté aux objectifs de l'entreprise. Il est notable que certaines variables, telles que la présence de l'option 'contract_month_to_month', la durée d'abonnement ('tenure') et les charges ('totalcharges' et 'monthly charges'), se sont avérées être des indicateurs clés dans les décisions des modèles.
     """)
 
     st.markdown("---")
@@ -461,7 +463,7 @@ elif choix_partie == 'VI - Conclusion et Perspectives':
 
     **1. Stratégies de Rétention Ciblées :**
     - Les insights tirés de la visualisation et de l'importance des variables peuvent être utilisés pour identifier les clients à haut risque de désabonnement. Des offres personnalisées ou des interventions proactives pourraient être mises en place pour les fidéliser.
-    - Une attention particulière devrait être portée aux clients ayant des durées d'abonnement courtes, des charges mensuelles élevées ou qui n'utilisent pas certains services spécifiques.
+    - Une attention particulière devrait être portée aux clients ayant des durées d'abonnement courtes, des charges mensuelles élevées, un abonnement payé mois par mois (sans engagement) ou qui n'utilisent pas certains services spécifiques.
 
     **2. Amélioration des Services et de l'Expérience Client :**
     - Comprendre pourquoi les clients qui utilisent certains services sont plus susceptibles de rester (ou de partir) peut orienter l'amélioration de ces services ou l'offre de services complémentaires pertinents.

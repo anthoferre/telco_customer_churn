@@ -9,7 +9,7 @@ class Settings(BaseSettings):
         extra='ignore'
     )
 
-    PROJECT_NAME: str = "API de Gestion du Churn Telco"
+    PROJECT_NAME: str = "API de Gestion de Churners en télécommunication"
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = "votre-super-cle-secrete-ici-ceci-doit-etre-une-chaine-longue-et-aleatoire"
     ALGORITHM: str = "HS256"

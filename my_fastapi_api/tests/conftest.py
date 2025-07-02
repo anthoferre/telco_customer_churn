@@ -3,7 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 
-from app.main import app as fastapi_app
+from mon_api import app as fastapi_app
 from app.database.connection import Base, get_db
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"

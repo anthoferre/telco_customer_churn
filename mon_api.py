@@ -4,17 +4,29 @@ import os
 import joblib
 import contextlib
 import pandas as pd
+from sqlmodel import create_engine, SQLModel
 
 # --- 1. Initialisation de l'application FastAPI ---
 
 api = FastAPI(title = 'API de prédiction de Churn',
               version='1.0.0')
 
+# --- 2. Chemin de la pipeline à charger ---
 churn_model = None
-
 MODEL_PATH = "churn_model.pkl"
 
-# --- 2. Chargement du modèle au démarrage de l'application ---
+# --- 3. Chemin de la database à charger
+DATABASE_URL = "sqlite:///./sql_app.db"
+engine = create_engine(DATABASE_URL, echo = True)
+
+# 4. Fonction pour créer les tables
+def create_db_and_tables():
+    """
+    Crée les tables de la base de données si elles n'existent pas.
+    """
+    SQLModel.metadata.create_all(engine)
+
+# --- 4. Chargement du modèle au démarrage de l'application ---
 @contextlib.asynccontextmanager
 async def lifespan(api: FastAPI):
     """
@@ -39,6 +51,9 @@ async def lifespan(api: FastAPI):
         print(f'Erreur lors du chargement du modèle {e}')
         # lève une erreur pour empêcher l'application de démarrer si le chargement du fichier ne se fait pas
         raise
+    
+    # création des tables de la base de données
+    create_db_and_tables()
 
     yield
 

@@ -16,6 +16,7 @@ venv/
 *.db     # Pour SQLite, par exemple sql_app.db
 *.sqlite
 *.sqlite3
+*.sql
 
 # Fichiers de configuration sensibles ou spécifiques à l'environnement
 .env     # Contient des clés secrètes, mots de passe, etc. NE JAMAIS COMMITER

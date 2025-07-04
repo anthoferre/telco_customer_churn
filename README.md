@@ -8,6 +8,7 @@
 ![Scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-121011?style=for-the-badge&logo=gnu-bash&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 
 ---
@@ -74,6 +75,23 @@ Les colonnes du jeu de données peuvent être regroupées dans les catégories s
 * **Variable cible :**
     * `Churn` : Indique si le client s'est désabonné au cours du dernier mois (Yes ou No).
 
+## 4. Performance du modèle
+
+Le modèle de classification (`RandomForestClassifier`) a été évalué sur un jeu de données de test dédié pour garantir la généralisation de ses prédictions.
+
+* **AUC-ROC :** `0.85%`
+
+### Rapport de Classification
+
+| Métrique    | Precision | Recall | F1-Score | Moy.Geo |
+|-------------|-----------|--------|----------|---------|
+| Non-Churn   | `0.94`    | `0.59` | `0.72`   | `0.72`  |
+| Churn       | `0.44`    | `0.89` | `0.59`   | `0.72`  |
+| Moy. pond.  | `0.80`    | `0.67` | `0.69`   | `0.72`  |
+
+*Note : Les valeurs de Precision, Recall et F1-Score pour la classe 'Churn' sont particulièrement importantes pour notre objectif de rétention client. La Moyenne Géommétrique est une métrique importante lors de jeux de données déséquilibrées comme ici lors de l'étude de désabonnement de clients. *
+
+### Matrice de Confusion
 ## 4. Architecture de la Solution
 
    #### 4.1. API de Prédiction (FastAPI) :

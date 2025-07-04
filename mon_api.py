@@ -13,7 +13,7 @@ api = FastAPI(title = 'API de prédiction de Churn',
 
 # --- 2. Chemin de la pipeline à charger ---
 churn_model = None
-MODEL_PATH = "churn_model.pkl"
+MODEL_PATH = "best_overall_churn_model.pkl"
 
 # --- 3. Chemin de la database à charger
 DATABASE_URL = "sqlite:///./sql_app.db"

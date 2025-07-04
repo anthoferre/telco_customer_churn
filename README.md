@@ -134,8 +134,8 @@ cd <NOM_DU_REPERTOIRE>
 
    #### 5.2. Créer un environnement virtuel (recommandé) :
 ```Bash
-python -m venv venv
-source venv/bin/activate  # Sur Windows: .\venv\Scripts\activate
+python -m venv .venv
+source .venv/bin/activate  # Sur Windows: .\.venv\Scripts\activate
 ```
 
    #### 5.3. Installer les dépendances :
@@ -147,7 +147,7 @@ pip install -r requirements.txt
 
    #### 5.5. Lancer l'API :
 ```Bash
-uvicorn main:api --reload
+uvicorn mon_api:api --reload
 ```
 L'API sera accessible à l'adresse `http://127.0.0.1:8000`. La documentation interactive (Swagger UI) est disponible à `http://127.0.0.1:8000/docs`.
 

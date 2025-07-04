@@ -16,15 +16,15 @@
 
 * [1. Description Générale](#1-description-générale)
 * [2. Objectifs du Projet](#2-objectifs-du-projet)
-* [3. Contenu du Jeu de Données](#3-contenu-du-jeu-de-donnees)
+* [3. Contenu du Jeu de Données](#3-contenu-du-jeu-de-données)
 * [4. Architecture de la Solution](#4-architecture-de-la-solution)
 * [5. Comment Lancer le Projet](#5-comment-lancer-le-projet)
 * [6. Utilisation de l'API](#6-utilisation-de-lapi)
-    * [6.1. Prédiction du Churn](#61-prediction-du-churn)
-    * [6.2. Ajout de Nouvelles Données Client](#62-ajout-de-nouvelles-donnees-client)
-* [7. Ré-entraînement du Modèle](#7-re-entrainement-du-modele)
+    * [6.1. Prédiction du Churn](#61-prédiction-du-churn)
+    * [6.2. Ajout de Nouvelles Données Client](#62-ajout-de-nouvelles-données-client)
+* [7. Ré-entraînement du Modèle](#7-ré-entrainement-du-modele)
 * [8. Cas d'Utilisation et Applications Potentielles](#8-cas-dutilisation-et-applications-potentielles)
-* [9. Références](#9-references)
+* [9. Références](#9-références)
 
 ---
 

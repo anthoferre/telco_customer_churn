@@ -81,6 +81,13 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 
 * **AUC-ROC :** `0.85%`
 
+### Matrice de Confusion
+|Réel -> |   0 |   1 |   Total |
+|Prédit ↓|-----|-----|---------|
+| 0      | 607 | 426 |    1033 |
+| 1      |  41 | 333 |     374 |
+| Total  | 648 | 759 |    1407 | 
+
 ### Rapport de Classification
 
 | Métrique    | Precision | Recall | F1-Score | Moy.Geo |

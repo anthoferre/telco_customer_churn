@@ -14,7 +14,7 @@
 
 ## Table des Matières
 
-* [1. Description Générale](#1-description-generale)
+* [1. Description Générale](#1-description-générale)
 * [2. Objectifs du Projet](#2-objectifs-du-projet)
 * [3. Contenu du Jeu de Données](#3-contenu-du-jeu-de-donnees)
 * [4. Architecture de la Solution](#4-architecture-de-la-solution)

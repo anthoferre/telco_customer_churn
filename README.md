@@ -1,6 +1,34 @@
 # Jeu de données sur le taux de désabonnement des clients de télécommunications
 
-## 1. Description générale
+---
+
+## Technologies et Compétences Clés
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white)
+![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+
+---
+
+## Table des Matières
+
+* [1. Description Générale](#1-description-generale)
+* [2. Objectifs du Projet](#2-objectifs-du-projet)
+* [3. Contenu du Jeu de Données](#3-contenu-du-jeu-de-donnees)
+* [4. Architecture de la Solution](#4-architecture-de-la-solution)
+* [5. Comment Lancer le Projet](#5-comment-lancer-le-projet)
+* [6. Utilisation de l'API](#6-utilisation-de-lapi)
+    * [6.1. Prédiction du Churn](#61-prediction-du-churn)
+    * [6.2. Ajout de Nouvelles Données Client](#62-ajout-de-nouvelles-donnees-client)
+* [7. Ré-entraînement du Modèle](#7-re-entrainement-du-modele)
+* [8. Cas d'Utilisation et Applications Potentielles](#8-cas-dutilisation-et-applications-potentielles)
+* [9. Références](#9-references)
+
+---
+
+## 1. Description Générale 
 
 Ce jeu de données fournit un aperçu complet des clients d'une entreprise de télécommunications, en se concentrant sur les facteurs qui influencent leur décision de quitter le service (désabonnement ou "churn"). Il contient des informations démographiques, des détails sur leurs comptes, les services qu'ils utilisent et leurs interactions avec l'entreprise. L'objectif principal de ce jeu de données est de permettre l'analyse du comportement des clients et la prédiction du taux de désabonnement, afin de développer des stratégies de fidélisation efficaces.
 
@@ -46,67 +74,65 @@ Les colonnes du jeu de données peuvent être regroupées dans les catégories s
 * **Variable cible :**
     * `Churn` : Indique si le client s'est désabonné au cours du dernier mois (Yes ou No).
 
-4. Architecture de la Solution
+## 4. Architecture de la Solution
 
-   1. API de Prédiction (FastAPI) :
+   #### 4.1. API de Prédiction (FastAPI) :
 
-Un service robuste et performant (main.py) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
+Un service robuste et performant (`mon_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
 Validation des données d'entrée via Pydantic pour garantir l'intégrité des requêtes.
 Gestion du cycle de vie de l'application (chargement du modèle au démarrage pour optimiser les performances).
 Gestion des erreurs claire via les HTTPException de FastAPI.
 
-   2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
-Le modèle de prédiction est une pipeline Scikit-learn sérialisée avec joblib, englobant les étapes de prétraitement des données (encodage des variables catégorielles, standardisation, etc.) et l'algorithme de classification entraîné.
+   #### 4.2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
+Le modèle de prédiction est une pipeline Scikit-learn sérialisée avec `joblib`, englobant les étapes de prétraitement des données (encodage des variables catégorielles, standardisation, etc.) et l'algorithme de classification entraîné.
 Le modèle est chargé en mémoire au démarrage de l'API.
 
-   3. Base de Données (SQLite / SQLModel) :
-Une base de données SQLite (sql_app.db) est utilisée pour stocker les données historiques des clients (y compris le statut de churn réel) ainsi que potentiellement les logs des prédictions effectuées.
+   #### 4.3. Base de Données (SQLite / SQLModel) :
+Une base de données SQLite (`sql_app.db`) est utilisée pour stocker les données historiques des clients (y compris le statut de churn réel) ainsi que potentiellement les logs des prédictions effectuées.
 SQLModel est utilisé pour une interaction ORM (Object-Relational Mapping) simple et efficace avec la base de données.
 
-   4. Module de Ré-entraînement (Script séparé) :
-Un script Python dédié (train_model.py) est responsable du ré-entraînement du modèle. Il lit les dernières données depuis la base de données, met à jour la pipeline de ML et sauvegarde la nouvelle version du modèle (churn_model.pkl).
+   #### 4.4. Module de Ré-entraînement (Script séparé) :
+Un script Python dédié (`train_model.py`) est responsable du ré-entraînement du modèle. Il lit les dernières données depuis la base de données, met à jour la pipeline de ML et sauvegarde la nouvelle version du modèle (`churn_model.pkl`).
 Cette séparation assure que le processus de ré-entraînement n'affecte pas la disponibilité de l'API de prédiction et permet des mises à jour régulières du modèle avec de nouvelles données, essentielle pour maintenir sa performance.
 
-5. Comment Lancer le Projet
+## 5. Comment Lancer le Projet
 
-   1. Cloner le dépôt :
-```Bash```
+   #### 5.1. Cloner le dépôt :
 
+```Bash
 git clone <URL_DU_VOTRE_DEPOT>
 cd <NOM_DU_REPERTOIRE>
+```
 
-Créer un environnement virtuel (recommandé) :
-Bash
 
+   #### 5.2. Créer un environnement virtuel (recommandé) :
+```Bash
 python -m venv venv
 source venv/bin/activate  # Sur Windows: .\venv\Scripts\activate
+```
 
-Installer les dépendances :
-Bash
-
+   #### 5.3. Installer les dépendances :
+```Bash
 pip install -r requirements.txt
+```
 
-(Assurez-vous d'avoir un fichier requirements.txt listant fastapi, uvicorn, pydantic, pandas, scikit-learn, joblib, sqlmodel)
+   #### 5.4. Pré-requis Modèle : Assurez-vous d'avoir un fichier `churn_model.pkl` (le modèle de ML pré-entraîné) dans le répertoire racine du projet. Si vous n'en avez pas, vous devrez d'abord exécuter le script de ré-entraînement.
 
-Pré-requis Modèle : Assurez-vous d'avoir un fichier churn_model.pkl (le modèle de ML pré-entraîné) dans le répertoire racine du projet. Si vous n'en avez pas, vous devrez d'abord exécuter le script de ré-entraînement.
+   #### 5.5. Lancer l'API :
+```Bash
+uvicorn main:api --reload
+```
+L'API sera accessible à l'adresse `http://127.0.0.1:8000`. La documentation interactive (Swagger UI) est disponible à `http://127.0.0.1:8000/docs`.
 
-Lancer l'API :
-Bash
+## 6. Utilisation de l'API
 
-    uvicorn main:api --reload
+   #### 6.1. Prédiction du Churn
 
-    L'API sera accessible à l'adresse http://127.0.0.1:8000. La documentation interactive (Swagger UI) est disponible à http://127.0.0.1:8000/docs.
+Endpoint : `POST /predict_churn`
+Description : Prédit la probabilité de désabonnement d'un client en fonction de ses caractéristiques.
 
-6. Utilisation de l'API
-
-6.1. Prédiction du Churn
-
-    Endpoint : POST /predict_churn
-
-    Description : Prédit la probabilité de désabonnement d'un client en fonction de ses caractéristiques.
-
-    Exemple de Requête (curl) :
-    Bash
+Exemple de Requête (`curl`) :
+```Bash
 
     curl -X 'POST' \
       'http://127.0.0.1:8000/predict_churn' \
@@ -133,15 +159,13 @@ Bash
         "Monthlycharges": 75.25,
         "Totalcharges": 1806.05
       }'
+```
+   #### 6.2. Ajout de Nouvelles Données Client
 
-6.2. Ajout de Nouvelles Données Client
-
-    Endpoint : POST /add_new_customer_data
-
-    Description : Permet d'ajouter de nouvelles données client, y compris leur statut de désabonnement réel, à la base de données. Ces données serviront pour le ré-entraînement futur du modèle.
-
-    Exemple de Requête (curl) :
-    Bash
+Endpoint : `POST /add_new_customer_data`
+Description : Permet d'ajouter de nouvelles données client, y compris leur statut de désabonnement réel, à la base de données. Ces données serviront pour le ré-entraînement futur du modèle.
+Exemple de Requête (`curl`) :
+```Bash
 
     curl -X 'POST' \
       'http://127.0.0.1:8000/add_new_customer_data' \
@@ -169,17 +193,17 @@ Bash
         "Totalcharges": 1140.00,
         "Churn": "Yes"
       }'
-
-7. Ré-entraînement du Modèle
+```
+## 7. Ré-entraînement du Modèle
 
 Le modèle peut être ré-entraîné en exécutant le script dédié :
-Bash
+```Bash
 
 python train_model.py
+```
+Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API `/add_new_customer_data`), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans `churn_model.pkl`. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
 
-Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API /add_new_customer_data), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans churn_model.pkl. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
-
-## 4. Cas d'utilisation et applications potentielles
+## 8. Cas d'utilisation et applications potentielles
 
 Ce jeu de données offre de nombreuses possibilités d'analyse et d'application, notamment :
 
@@ -191,6 +215,6 @@ Ce jeu de données offre de nombreuses possibilités d'analyse et d'application,
 * **Évaluation de l'impact des offres et des promotions :** Analyser si certaines offres ou promotions ont un effet sur la réduction du taux de désabonnement.
 
  
-## 5. Références
+## 9. Références
 
 [Lien vers le jeu de données sur Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)

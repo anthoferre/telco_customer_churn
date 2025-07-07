@@ -229,7 +229,7 @@ L'application Streamlit (my_streamlit.py) fournit une interface utilisateur grap
 
 Pour lancer l'application Streamlit :
 
-- Dans votre terminal, naviguez vers le dossier où se trouve my_streamlit.py.
+- Dans votre terminal, naviguez vers le dossier où se trouve `my_streamlit.py`.
 - Exécutez la commande suivante :
 ```Bash
 streamlit run my_streamlit.py

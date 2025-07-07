@@ -23,9 +23,10 @@
 * [6. Utilisation de l'API](#6-utilisation-de-lapi)
     * [6.1. Prédiction du Churn](#61-prédiction-du-churn)
     * [6.2. Ajout de Nouvelles Données Client](#62-ajout-de-nouvelles-données-client)
-* [7. Ré-entraînement du Modèle](#7-ré-entrainement-du-modele)
-* [8. Cas d'Utilisation et Applications Potentielles](#8-cas-dutilisation-et-applications-potentielles)
-* [9. Références](#9-références)
+* [7. Utilisation de l'Application Streamlit](#7-utilisation-de-lapplication-streamlit)
+* [8. Ré-entraînement du Modèle](#8-ré-entrainement-du-modele)
+* [9. Cas d'Utilisation et Applications Potentielles](#9-cas-dutilisation-et-applications-potentielles)
+* [10. Références](#10-références)
 
 ---
 
@@ -231,10 +232,11 @@ Pour lancer l'application Streamlit :
 - Dans votre terminal, naviguez vers le dossier où se trouve my_streamlit.py.
 - Exécutez la commande suivante :
 ```Bash
-streamlit run my_streamlit.py```
-
+streamlit run my_streamlit.py
+```
 L'application s'ouvrira automatiquement dans votre navigateur web à l'adresse `http://localhost:8501`.
-## 7. Ré-entraînement du Modèle
+
+## 8. Ré-entraînement du Modèle
 
 Le modèle peut être ré-entraîné en exécutant le script dédié :
 ```Bash
@@ -243,7 +245,7 @@ python train_model.py
 ```
 Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API `/add_new_customer_data`), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans `churn_model.pkl`. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
 
-## 8. Cas d'utilisation et applications potentielles
+## 9. Cas d'utilisation et applications potentielles
 
 Ce jeu de données offre de nombreuses possibilités d'analyse et d'application, notamment :
 
@@ -255,6 +257,6 @@ Ce jeu de données offre de nombreuses possibilités d'analyse et d'application,
 * **Évaluation de l'impact des offres et des promotions :** Analyser si certaines offres ou promotions ont un effet sur la réduction du taux de désabonnement.
 
  
-## 9. Références
+## 10. Références
 
 [Lien vers le jeu de données sur Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn)

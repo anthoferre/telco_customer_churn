@@ -221,6 +221,19 @@ Exemple de Requête (`curl`) :
         "Churn": "Yes"
       }'
 ```
+
+## 7. Utilisation de l'Application Streamlit
+
+L'application Streamlit (my_streamlit.py) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
+
+Pour lancer l'application Streamlit :
+
+- Dans votre terminal, naviguez vers le dossier où se trouve my_streamlit.py.
+- Exécutez la commande suivante :
+```Bash
+streamlit run my_streamlit.py```
+
+L'application s'ouvrira automatiquement dans votre navigateur web à l'adresse `http://localhost:8501`.
 ## 7. Ré-entraînement du Modèle
 
 Le modèle peut être ré-entraîné en exécutant le script dédié :

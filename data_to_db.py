@@ -46,10 +46,3 @@ try:
 
 except Exception as e:
     print(f"Une erreur est survenue lors de l'insertion : {e}")
-
-# --- 6. Ajouter le fichier .db au .gitignore (TRÈS IMPORTANT) ---
-# Assurez-vous que votre fichier .gitignore (à la racine de votre projet) contient la ligne :
-# sql_app.db
-# Ou plus généralement :
-# *.db
-print(f"\nN'oubliez pas d'ajouter '{DB_FILE}' à votre fichier .gitignore.")

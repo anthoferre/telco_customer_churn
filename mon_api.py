@@ -1,73 +1,119 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, status
 from pydantic import BaseModel, Field
 import os
 import joblib
 import contextlib
 import pandas as pd
-from sqlmodel import create_engine, SQLModel
+import logging
+from typing import Optional, List
+from sqlmodel import create_engine, SQLModel, Field as SQLField, Session, select
 
-# --- 1. Initialisation de l'application FastAPI ---
+# --- Configuration du logging ---
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-api = FastAPI(title = 'API de prédiction de Churn',
-              version='1.0.0')
+# --- Initialisation de l'application FastAPI ---
+api = FastAPI(title='API de prédiction de Churn et gestion client', version='1.0.0')
 
-# --- 2. Chemin de la pipeline à charger ---
+# --- Chemin de la pipeline à charger ---
 churn_model = None
-MODEL_PATH = "best_overall_churn_model.pkl"
+MODEL_PATH = "best_overall_churn_model.pkl" # Assurez-vous que ce fichier existe
 
-# --- 3. Chemin de la database à charger
+# --- Chemin de la database à charger ---
 DATABASE_URL = "sqlite:///./sql_app.db"
-engine = create_engine(DATABASE_URL, echo = True)
+engine = create_engine(DATABASE_URL, echo=False) # echo=False pour ne pas spammer les logs avec les requêtes SQL
 
-# 4. Fonction pour créer les tables
+# --- Modèle SQLModel pour la table des clients ---
+class Customer(SQLModel, table=True):
+    """
+    Modèle de base de données pour un client, correspondant aux champs d'entrée.
+    """
+    id: Optional[int] = SQLField(default=None, primary_key=True)
+    Gender: str
+    Seniorcitizen: int
+    Partner: str
+    Dependents: str
+    Tenure: int
+    Phoneservice: str
+    Multiplelines: str
+    Internetservice: str
+    Onlinesecurity: str
+    Onlinebackup: str
+    Deviceprotection: str
+    Techsupport: str
+    Streamingtv: str
+    Streamingmovies: str
+    Contract: str
+    Paperlessbilling: str
+    Paymentmethod: str
+    Monthlycharges: float
+    Totalcharges: float
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+# --- Fonctions pour la gestion de la base de données ---
 def create_db_and_tables():
     """
     Crée les tables de la base de données si elles n'existent pas.
     """
     SQLModel.metadata.create_all(engine)
+    logger.info("Tables de la base de données créées ou déjà existantes.")
 
-# --- 4. Chargement du modèle au démarrage de l'application ---
+def get_session():
+    """
+    Dépendance pour obtenir une session de base de données.
+    Utilisée avec `Depends` dans les routes.
+    """
+    with Session(engine) as session:
+        yield session
+
+# --- Chargement du modèle au démarrage de l'application ---
 @contextlib.asynccontextmanager
 async def lifespan(api: FastAPI):
     """
     Gère les événements de démarrage et d'arrêt de l'application FastAPI.
-    Le code avant 'yield' s'exécute au démarrage (startup).
-    Le code après 'yield' s'exécute à l'arrêt (shutdown).
     """
-    # nous modifions la variable globale 'churn_model'
     global churn_model
 
-    # vérifie si le fichier du modèle existe avant de tenter de le charger
+    logger.info("Démarrage de l'application API.")
+
+    # Vérifie si le fichier du modèle existe avant de tenter de le charger
     if not os.path.exists(MODEL_PATH):
-        print(f'Erreur : Fichier modèle introuvable à {MODEL_PATH}')
-        # lève une erreur pour empêcher l'application de démarrer si le fichier est manquant
-        raise FileNotFoundError(f'''Modèle de ML non trouvé. Veuillez placer {MODEL_PATH} dans le répertoire de l'API''')
+        logger.error(f'Erreur : Fichier modèle introuvable à {MODEL_PATH}')
+        raise FileNotFoundError(f'Modèle de ML non trouvé. Veuillez placer {MODEL_PATH} dans le répertoire de l\'API.')
     
     try:
-        # charge le fichier 
+        # Charge le pipeline complet (qui inclut le préprocesseur)
         churn_model = joblib.load(MODEL_PATH)
-        print(f"Modèle de churn chargé avec succès depuis {MODEL_PATH}")
+        logger.info(f"Modèle de churn (pipeline complet) chargé avec succès depuis {MODEL_PATH}")
     except Exception as e:
-        print(f'Erreur lors du chargement du modèle {e}')
-        # lève une erreur pour empêcher l'application de démarrer si le chargement du fichier ne se fait pas
+        logger.exception(f'Erreur lors du chargement du modèle : {e}')
         raise
     
-    # création des tables de la base de données
+    # Création des tables de la base de données
     create_db_and_tables()
 
     yield
 
-    # --- Code exécuté lorsque l'application s'arrête
-    print('''Arrêt de l'application''')
+    # --- Code exécuté lorsque l'application s'arrête ---
+    logger.info("Arrêt de l'application API.")
 
-# associe la fonction lifespan à l'API
+# Associe la fonction lifespan à l'API
 api.router.lifespan_context = lifespan
+
+# --- Schémas Pydantic pour les données d'entrée/sortie ---
 
 class ChurnPredictionInput(BaseModel):
     """
     Définit le schéma des données d'entrées pour la prédiction de churn.
-    Ces champs correspondent aux caractéristiques du client."""
-
+    Ces champs correspondent aux caractéristiques du client.
+    """
     Gender : str = Field(..., example='Male', description="Genre du client (Male/Female)", pattern="^(Male|Female)$")
     Seniorcitizen : int = Field(..., example=1, description="Indique si le client est un sénior (1) ou non (0)", ge=0, le=1)
     Partner : str = Field(..., example='Yes', description="Indique si le client a un partenaire (Yes/No)", pattern="^(Yes|No)$")
@@ -96,39 +142,137 @@ class ChurnPredictionOutput(BaseModel):
     churn_probability : float = Field(..., description="Probabilité de désabonnement du client (valeur entre 0 et 1)", ge=0, le=1)
     churn_label : str = Field(..., description="Prédiction du désabonnement : 'Yes' si la probabilité >= 0.5 sinon 'No'")
 
+# --- Routes de l'API ---
 
-# --- Route de prédiction ---
 @api.post("/predict_churn", response_model=ChurnPredictionOutput, summary="Prédire le désabonnement client")
 async def predict_churn(input_data: ChurnPredictionInput):
     """
     Endpoint pour la prédiction de désabonnement des clients.
     
-    Entrées :
-    - caractéristiques du client
+    **Entrées** :
+    - Caractéristiques du client (voir le schéma `ChurnPredictionInput`).
     
-    Sorties :
+    **Sorties** :
     - La probabilité que le client se désabonne.
-    - La prédiction basée sur cette probabilité.
+    - La prédiction binaire ('Yes' ou 'No') basée sur cette probabilité.
     """
-
     global churn_model
 
     if churn_model is None:
-        raise HTTPException(status_code=500, detail = "Le modèle de prédiction n'a pas été chargé.")
+        logger.error("Le modèle de prédiction n'a pas été chargé lors du démarrage.")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Le modèle de prédiction n'a pas été chargé.")
 
-    # convertit les données reçues en entrée dans l'API (pydantic base model) en un dataframe pandas
-    input_df = pd.DataFrame([input_data.dict()])
+    # Convertit les données reçues en entrée dans l'API (pydantic base model) en un DataFrame pandas.
+    # Le pipeline chargé (churn_model) gérera automatiquement le pré-traitement.
+    input_df_raw = pd.DataFrame([input_data.dict()])
+    logger.debug(f"Données brutes reçues pour prédiction: {input_df_raw.to_dict()}")
 
     try:
-        churn_probability = float(churn_model.predict_proba(input_df)[0][1])
-
-        churn_label = "Yes" if churn_probability >= 0.5 else "No"
+        # Effectue la prédiction en utilisant le pipeline complet
+        # Le pipeline inclut le préprocesseur et le sélecteur de caractéristiques.
+        # Plus besoin d'appeler `preprocess_for_prediction` manuellement.
+        churn_probability = float(churn_model.predict_proba(input_df_raw)[0][1])
+        
+        # NOTE : La variable CHURN_THRESHOLD n'est pas définie dans l'API.
+        # Vous devriez soit la définir ici, soit la rendre configurable.
+        # Pour l'instant, j'utilise 0.5 comme valeur par défaut si non définie.
+        PREDICTION_THRESHOLD = 0.5 
+        churn_label = "Yes" if churn_probability >= PREDICTION_THRESHOLD else "No" 
+        logger.info(f"Prédiction pour le client: Probabilité={churn_probability:.2f}, Label={churn_label}")
     
     except Exception as e:
-        print(f"Erreur lors de la prédiction du modèle {e}")
-        raise HTTPException(status_code=500, detail = f"Erreur lors de la prédiction du modèle {e}. Vérifier que les données d'entrées sont correctes")
+        logger.exception(f"Erreur lors de la prédiction du modèle : {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Erreur lors de la prédiction : {e}. Vérifiez les données d'entrées.")
     
     return ChurnPredictionOutput(
         churn_probability=churn_probability,
         churn_label=churn_label
     )
+
+---
+### **Routes pour la gestion des clients (CRUD)**
+
+```python
+@api.post("/customers/", response_model=Customer, status_code=status.HTTP_201_CREATED, summary="Ajouter un nouveau client")
+async def create_customer(customer: ChurnPredictionInput, session: Session = Depends(get_session)):
+    """
+    Crée un nouvel enregistrement client dans la base de données.
+    """
+    try:
+        db_customer = Customer(**customer.dict())
+        session.add(db_customer)
+        session.commit()
+        session.refresh(db_customer)
+        logger.info(f"Client ajouté avec succès : ID={db_customer.id}")
+        return db_customer
+    except Exception as e:
+        logger.exception(f"Erreur lors de l'ajout du client : {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Impossible d'ajouter le client : {e}")
+
+@api.get("/customers/", response_model=List[Customer], summary="Récupérer tous les clients")
+async def read_customers(session: Session = Depends(get_session)):
+    """
+    Récupère la liste de tous les clients enregistrés dans la base de données.
+    """
+    try:
+        customers = session.exec(select(Customer)).all()
+        logger.info(f"Récupération de {len(customers)} clients.")
+        return customers
+    except Exception as e:
+        logger.exception(f"Erreur lors de la récupération des clients : {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Impossible de récupérer les clients : {e}")
+
+@api.get("/customers/{customer_id}", response_model=Customer, summary="Récupérer un client par ID")
+async def read_customer(customer_id: int, session: Session = Depends(get_session)):
+    """
+    Récupère un client spécifique par son ID.
+    """
+    customer = session.get(Customer, customer_id)
+    if not customer:
+        logger.warning(f"Client introuvable avec l'ID : {customer_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client non trouvé")
+    logger.info(f"Client récupéré avec l'ID : {customer_id}")
+    return customer
+
+@api.put("/customers/{customer_id}", response_model=Customer, summary="Mettre à jour un client existant")
+async def update_customer(customer_id: int, customer_update: ChurnPredictionInput, session: Session = Depends(get_session)):
+    """
+    Met à jour les informations d'un client existant.
+    """
+    customer = session.get(Customer, customer_id)
+    if not customer:
+        logger.warning(f"Tentative de mise à jour d'un client introuvable avec l'ID : {customer_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client non trouvé")
+    
+    try:
+        # Met à jour l'objet customer avec les données de customer_update
+        for field, value in customer_update.dict(exclude_unset=True).items():
+            setattr(customer, field, value)
+        
+        session.add(customer)
+        session.commit()
+        session.refresh(customer)
+        logger.info(f"Client mis à jour avec succès : ID={customer_id}")
+        return customer
+    except Exception as e:
+        logger.exception(f"Erreur lors de la mise à jour du client {customer_id} : {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Impossible de mettre à jour le client : {e}")
+
+@api.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Supprimer un client")
+async def delete_customer(customer_id: int, session: Session = Depends(get_session)):
+    """
+    Supprime un client de la base de données.
+    """
+    customer = session.get(Customer, customer_id)
+    if not customer:
+        logger.warning(f"Tentative de suppression d'un client introuvable avec l'ID : {customer_id}")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client non trouvé")
+    
+    try:
+        session.delete(customer)
+        session.commit()
+        logger.info(f"Client supprimé avec succès : ID={customer_id}")
+        return {}
+    except Exception as e:
+        logger.exception(f"Erreur lors de la suppression du client {customer_id} : {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Impossible de supprimer le client : {e}")

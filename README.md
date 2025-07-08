@@ -104,6 +104,20 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 
 ## 5. Architecture de la Solution
 
+```
+└── telco_customer_churn\
+   ├── .venv/
+   ├── README.md
+   ├── requirements.txt
+   ├── raw_data.csv
+   ├── train_model.py
+   ├── best_overall_churn_model.pkl
+   ├── sql_app.db
+   ├── my_streamlit.py
+   ├── my_api.py
+   └── images/
+```
+
    #### 5.1. API de Prédiction (FastAPI) :
 
 Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).

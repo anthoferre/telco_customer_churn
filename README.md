@@ -102,13 +102,11 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 
 *Note : Les valeurs de Precision, Recall et F1-Score pour la classe 'Churn' sont particulièrement importantes pour notre objectif de rétention client. La Moyenne Géommétrique est une métrique importante lors de jeux de données déséquilibrées comme ici lors de l'étude de désabonnement de clients. *
 
-### Matrice de Confusion
-
 ## 5. Architecture de la Solution
 
    #### 5.1. API de Prédiction (FastAPI) :
 
-Un service robuste et performant (`mon_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
+Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
 
    #### 5.2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
 Le modèle de prédiction est une pipeline Scikit-learn sérialisée avec `joblib`, englobant les étapes de prétraitement des données (encodage des variables catégorielles, standardisation, etc.) et l'algorithme de classification entraîné.

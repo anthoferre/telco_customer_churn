@@ -81,24 +81,24 @@ Les colonnes du jeu de données peuvent être regroupées dans les catégories s
 
 Le modèle de classification (`RandomForestClassifier`) a été évalué sur un jeu de données de test dédié pour garantir la généralisation de ses prédictions.
 
-* **AUC-ROC :** `0.85%`
+* **AUC-ROC :** `0.84`
 
 ### Matrice de Confusion
 
 |      |Réel |   0 |   1 |   Total |
 |------|-----|-----|-----|---------|
 |Prédit|-----|-----|-----|---------|
-| 0    |-----| 607 | 426 |    1033 |
-| 1    |-----|  41 | 333 |     374 |
-|Total |-----| 648 | 759 |    1407 | 
+| 0    |-----| 576 | 457 |    1033 |
+| 1    |-----|  35 | 339 |     374 |
+|Total |-----| 611 | 796 |    1407 | 
 
 ### Rapport de Classification
 
 | Métrique    | Precision | Recall | F1-Score | Moy.Geo |
 |-------------|-----------|--------|----------|---------|
-| Non-Churn   | `0.94`    | `0.59` | `0.72`   | `0.72`  |
-| Churn       | `0.44`    | `0.89` | `0.59`   | `0.72`  |
-| Moy. pond.  | `0.80`    | `0.67` | `0.69`   | `0.72`  |
+| Non-Churn   | `0.94`    | `0.56` | `0.70`   | `0.71`  |
+| Churn       | `0.43`    | `0.91` | `0.58`   | `0.71`  |
+| Moy. pond.  | `0.81`    | `0.65` | `0.67`   | `0.71`  |
 
 *Note : Les valeurs de Precision, Recall et F1-Score pour la classe 'Churn' sont particulièrement importantes pour notre objectif de rétention client. La Moyenne Géommétrique est une métrique importante lors de jeux de données déséquilibrées comme ici lors de l'étude de désabonnement de clients. *
 

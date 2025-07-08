@@ -27,11 +27,10 @@ pd.set_option('display.max_columns', None)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-RAW_DATA_FILE = 'raw_data.csv'
+
 DF_PICKLE_FILE = 'df_telco_customer_churn.pkl'
 X_TEST_FILE = 'x_test.pkl'
 Y_TEST_FILE = 'y_test.pkl'
-FEATURE_IMPORTANCES_PLOT = 'Feature_importances.png' # Peut être supprimé si plus utilisé du tout
 BEST_OVERALL_CHURN_MODEL_FILE = 'best_overall_churn_model.pkl'
 
 TEST_SIZE = 0.2

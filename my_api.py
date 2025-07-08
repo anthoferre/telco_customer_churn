@@ -189,10 +189,10 @@ async def predict_churn(input_data: ChurnPredictionInput):
         churn_label=churn_label
     )
 
----
+
 ### **Routes pour la gestion des clients (CRUD)**
 
-```python
+
 @api.post("/customers/", response_model=Customer, status_code=status.HTTP_201_CREATED, summary="Ajouter un nouveau client")
 async def create_customer(customer: ChurnPredictionInput, session: Session = Depends(get_session)):
     """

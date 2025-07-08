@@ -4,7 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import logging
+import os # Importation de os pour les chemins de fichiers
 from typing import List, Dict, Any, Tuple
+
+from sqlalchemy import create_engine # Ajout pour la connexion à la base de données
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
@@ -28,7 +31,16 @@ pd.set_option('display.max_columns', None)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-DF_PICKLE_FILE = 'df_telco_customer_churn.pkl'
+# --- Chemins vers les fichiers et la base de données ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Répertoire du script actuel
+
+DB_FILE = "sql_app.db"
+DB_PATH = os.path.join(BASE_DIR, DB_FILE)
+DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+TABLE_NAME = "customers" # Nom de la table dans la base de données
+
+# Fichiers de sauvegarde du modèle et des ensembles de test
 X_TEST_FILE = 'x_test.pkl'
 Y_TEST_FILE = 'y_test.pkl'
 BEST_OVERALL_CHURN_MODEL_FILE = 'best_overall_churn_model.pkl'
@@ -41,51 +53,78 @@ CV_FOLDS = 5
 
 # --- Fonctions ---
 
-def load_and_prepare_data(file_path: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
+# MODIFICATION ICI : La fonction charge maintenant depuis la base de données
+def load_and_prepare_data_from_db(db_url: str, table_name: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     """
-    Charge les données, effectue un nettoyage initial et sépare les features de la cible.
+    Charge les données depuis la base de données, effectue un nettoyage final si nécessaire
+    et sépare les features de la cible.
     """
-    logging.info(f"Chargement et préparation des données depuis {file_path}")
+    logging.info(f"Chargement des données depuis la base de données : '{db_url}' table : '{table_name}'")
+    
     try:
-        df = pd.read_csv(file_path, na_values=[' ', None])
-    except FileNotFoundError:
-        logging.error(f"Erreur: Le fichier '{file_path}' n'a pas été trouvé. Veuillez vérifier le chemin.")
-        raise
+        engine = create_engine(db_url)
+        df = pd.read_sql_table(table_name, con=engine)
+    except Exception as e:
+        logging.error(f"Erreur lors du chargement des données depuis la base de données : {e}")
+        raise # Rélance l'exception pour arrêter le script
 
-    df.drop('customerID', axis=1, inplace=True)
-    df = df.dropna(how='any')
-    df.columns = df.columns.str.title()
-
-    df.to_pickle(DF_PICKLE_FILE)
-
-    df['Churn'] = df['Churn'].replace({'No': 0, 'Yes': 1}).astype('int')
+    logging.info(f"Données chargées : {df.shape[0]} lignes, {df.shape[1]} colonnes.")
+    
+    # Conversion de la colonne cible 'Churn' en numérique (0 et 1)
+    if 'Churn' in df.columns:
+        df['Churn'] = df['Churn'].replace({'No': 0, 'Yes': 1}).astype('int')
+    else:
+        logging.error("La colonne 'Churn' est introuvable dans le DataFrame chargé de la DB.")
+        raise ValueError("Colonne 'Churn' manquante.")
 
     target = df['Churn']
     features = df.drop(['Churn'], axis=1)
 
-    logging.info("Données chargées et préparées avec succès.")
+    logging.info("Données préparées avec succès pour l'entraînement.")
     return features, target, df
+
 
 def get_column_types(features_df: pd.DataFrame) -> Tuple[List[str], List[str], List[str], List[str], List[str]]:
     """
     Identifie et retourne les noms des colonnes par type pour le prétraitement.
     """
     logging.info("Identification des types de colonnes.")
-    numerical_cols = features_df.select_dtypes(['int', 'float']).drop('Seniorcitizen', axis=1).columns.tolist()
+    # S'assurer que 'SeniorCitizen' est traité comme une caractéristique numérique ou binaire spécifique
+    # Il est un int 0/1, donc il sera pris par numerical_cols si non explicitement exclu.
+    # Si vous voulez le traiter séparément (ex: comme binaire ordinal), il faudrait ajuster ici.
     
+    # Ajustement : SeniorCitizen est 0/1 mais s'il est utilisé comme feature numérique, pas de soucis.
+    # S'il doit être traité comme une binaire, il faut l'ajouter à binary_yes_no_cols
+    # Pour l'instant, je le laisse dans numerical_cols car il est int.
+    numerical_cols = features_df.select_dtypes(['int', 'float']).columns.tolist()
+    # Retirer 'SeniorCitizen' de numerical_cols si vous voulez le traiter comme binaire Yes/No ou Gender
+    # Si SeniorCitizen est juste 0/1, il peut rester dans numerical_cols et être scalé, ou être traité comme binaire.
+    # Pour la cohérence avec le modèle original, je le laisse dans numerical_cols (il sera standardisé).
+    if 'SeniorCitizen' not in numerical_cols and 'Seniorcitizen' in numerical_cols: # Pour gérer les variations de casse
+        numerical_cols.remove('Seniorcitizen')
+        numerical_cols.append('SeniorCitizen') # Normalisation du nom de colonne après str.title() dans data_to_db
+
     binary_yes_no_cols = [col for col in features_df.columns
                           if features_df[col].nunique() == 2 and 'Yes' in features_df[col].unique() and 'No' in features_df[col].unique()]
     
-    gender_col = ['Gender']
+    # Assurez-vous que 'Gender' est bien une liste si elle doit correspondre à `gender_col: List[str]`
+    gender_col = ['Gender'] if 'Gender' in features_df.columns else []
 
     all_object_cols = features_df.select_dtypes('object').columns.tolist()
     
     no_service_values = ['No internet service', 'No phone service']
     no_internet_service_cols = [col for col in all_object_cols
-                                if any(val in features_df[col].unique() for val in no_service_values)]
+                                if any(val in features_df[col].unique() for val in no_service_values)
+                                or (col == 'MultipleLines' and 'No phone service' in features_df[col].unique())] # Ajout MultipleLines si elle a 'No phone service'
     
     other_cat_cols = [col for col in all_object_cols
                       if col not in gender_col and col not in binary_yes_no_cols and col not in no_internet_service_cols]
+    
+    logging.info(f"Colonnes numériques: {numerical_cols}")
+    logging.info(f"Colonnes binaires Yes/No: {binary_yes_no_cols}")
+    logging.info(f"Colonne genre: {gender_col}")
+    logging.info(f"Colonnes 'no service': {no_internet_service_cols}")
+    logging.info(f"Autres colonnes catégorielles: {other_cat_cols}")
 
     logging.info("Types de colonnes identifiés.")
     return numerical_cols, binary_yes_no_cols, gender_col, no_internet_service_cols, other_cat_cols
@@ -102,27 +141,52 @@ def create_preprocessor(x_train_df: pd.DataFrame,
     logging.info("Création du préprocesseur de données.")
 
     numerical_transformer = StandardScaler()
-    binary_yes_no_transformer = OrdinalEncoder(categories=[['No', 'Yes']] * len(binary_yes_no_cols),
+    
+    # Pour binary_yes_no_cols, assurez-vous que les catégories sont correctes pour chaque colonne
+    binary_yes_no_categories = [['No', 'Yes']] * len(binary_yes_no_cols)
+    binary_yes_no_transformer = OrdinalEncoder(categories=binary_yes_no_categories,
                                                handle_unknown='use_encoded_value', unknown_value=-1)
-    gender_transformer = OrdinalEncoder(categories=[['Female', 'Male']],
+    
+    # Pour gender_col, assurez-vous que les catégories sont correctes
+    gender_categories = [['Female', 'Male']] if gender_col else []
+    gender_transformer = OrdinalEncoder(categories=gender_categories,
                                         handle_unknown='use_encoded_value', unknown_value=-1)
     
-    all_categories_no_internet = []
+    # Pour no_internet_service_cols, les catégories doivent être extraites dynamiquement
+    # avec 'No internet service' ou 'No phone service' comme première catégorie
+    all_categories_no_service = []
     for col in no_internet_service_cols:
-        current_categories = [cat for cat in x_train_df[col].unique() if cat not in ['No internet service', 'No phone service']]
-        all_categories_no_internet.append(current_categories)
+        # Assurer un ordre consistant pour l'encodage OneHot (ex: No Service, puis les autres)
+        unique_vals = list(x_train_df[col].unique())
+        ordered_categories = []
+        if 'No internet service' in unique_vals:
+            ordered_categories.append('No internet service')
+            unique_vals.remove('No internet service')
+        if 'No phone service' in unique_vals:
+            ordered_categories.append('No phone service')
+            unique_vals.remove('No phone service')
+        ordered_categories.extend(sorted(unique_vals)) # Ajouter les autres dans l'ordre alphabétique
+        all_categories_no_service.append(ordered_categories)
 
-    categorical_transformer_no_internet_service = OneHotEncoder(categories=all_categories_no_internet, handle_unknown='ignore', drop=None)
+    categorical_transformer_no_internet_service = OneHotEncoder(categories=all_categories_no_service, handle_unknown='ignore', drop=None)
+    
+    # Pour other_cat_cols, l'ordre n'est pas fixe, donc OneHotEncoder est suffisant
     categorical_transformer_other = OneHotEncoder(handle_unknown='ignore', drop='if_binary')
 
+    # Construction des transformers
+    transformers_list = [
+        ('num', numerical_transformer, numerical_cols),
+        ('bin_yes_no', binary_yes_no_transformer, binary_yes_no_cols)
+    ]
+    if gender_col: # Ajouter le transformer pour Gender seulement si la colonne existe
+        transformers_list.append(('gender', gender_transformer, gender_col))
+    if no_internet_service_cols: # Ajouter le transformer si des colonnes 'no service' existent
+        transformers_list.append(('cat_no_int', categorical_transformer_no_internet_service, no_internet_service_cols))
+    if other_cat_cols: # Ajouter le transformer si d'autres colonnes catégorielles existent
+        transformers_list.append(('cat_other', categorical_transformer_other, other_cat_cols))
+
     preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numerical_transformer, numerical_cols),
-            ('bin_yes_no', binary_yes_no_transformer, binary_yes_no_cols),
-            ('gender', gender_transformer, gender_col),
-            ('cat_no_int', categorical_transformer_no_internet_service, no_internet_service_cols),
-            ('cat_other', categorical_transformer_other, other_cat_cols)
-        ],
+        transformers=transformers_list,
         remainder='drop'
     )
     logging.info("Préprocesseur créé avec succès.")
@@ -137,26 +201,10 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
     """
     Entraîne et évalue une liste de modèles de classification en utilisant RandomizedSearchCV
     pour l'optimisation des hyperparamètres. Stocke tous les résultats pour une analyse ultérieure.
-
-    Args:
-        x_train (pd.DataFrame): Données d'entraînement pour les caractéristiques.
-        y_train (pd.Series): Cible d'entraînement.
-        x_test (pd.DataFrame): Données de test pour les caractéristiques.
-        preprocessor (ColumnTransformer): Le préprocesseur de données.
-        models_to_evaluate (List[Tuple[str, Any]]): Liste de tuples (nom du modèle, instance du modèle).
-        scorer (Any): La fonction de score à utiliser pour l'optimisation (ex: make_scorer(recall_score)).
-
-    Returns:
-        Dict[str, Dict[str, Any]]: Un dictionnaire contenant les meilleurs scores,
-                                   les meilleurs paramètres, les meilleurs modèles,
-                                   et les résultats d'évaluation détaillés pour chaque classifieur.
     """
     logging.info("Début de l'entraînement et de l'évaluation comparative des modèles.")
     results = {}
     under_sampler = RandomUnderSampler(random_state=RANDOM_STATE)
-
-    # Note: transformed_feature_names n'est plus nécessaire ici car feature_importances est retiré.
-    # Si d'autres analyses nécessitent les noms de features transformées, elles devront être recalculées localement.
 
     for name_model, model in models_to_evaluate:
         logging.info(f"\n--- Optimisation des hyperparamètres pour : {name_model} ---")
@@ -164,7 +212,7 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
         model_pipeline_all = ImbPipeline(steps=[
             ('preprocessor', preprocessor),
             ('under_sampler', under_sampler),
-            ('selector', SelectKBest()), # KBest sera toujours utilisé
+            ('selector', SelectKBest()), 
             ('model', model)
         ])
 
@@ -190,6 +238,8 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
                       'model__max_depth': [None, 10],
                       'model__min_samples_split': [2, 5]}
 
+        # Réduction du nombre d'itérations pour RandomizedSearchCV si le temps de calcul est un souci
+        # n_iter est défini par défaut à 10. Vous pouvez l'ajuster : n_iter=5 ou 20
         grid = RandomizedSearchCV(model_pipeline_all, params, cv=CV_FOLDS, scoring=scorer,
                                   n_jobs=-1, random_state=RANDOM_STATE, verbose=1)
         grid.fit(x_train, y_train)
@@ -197,11 +247,10 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
         y_pred_proba = grid.predict_proba(x_test)
         y_preds = np.where(y_pred_proba[:, 1] > CHURN_THRESHOLD, 1, 0)
         
-        # --- Stockage de tous les résultats pour ce modèle ---
         current_model_results = {
             'best_score': grid.best_score_,
             'best_params': grid.best_params_,
-            'best_estimator': grid.best_estimator_, # Le pipeline optimisé
+            'best_estimator': grid.best_estimator_, 
             'y_pred_proba': y_pred_proba,
             'y_preds': y_preds,
             'confusion_matrix': pd.crosstab(y_test, y_preds, rownames=['Réel'], colnames=['Prédit'], margins=True, margins_name='Total').to_markdown(),
@@ -210,8 +259,6 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
                                'tpr': roc_curve(y_test, y_pred_proba[:, 1], pos_label=1)[1],
                                'auc': auc(roc_curve(y_test, y_pred_proba[:, 1], pos_label=1)[0], roc_curve(y_test, y_pred_proba[:, 1], pos_label=1)[1])}
         }
-        
-        # La logique de récupération des importances de caractéristiques pour Random Forest est retirée.
         
         results[name_model] = current_model_results
 
@@ -228,7 +275,9 @@ def main():
     """
     logging.info("Démarrage du script de prédiction du churn.")
 
-    features, target, _ = load_and_prepare_data(RAW_DATA_FILE)
+    # MODIFICATION ICI : Appel de la nouvelle fonction de chargement depuis la DB
+    features, target, _ = load_and_prepare_data_from_db(DATABASE_URL, TABLE_NAME)
+    
     x_train, x_test, y_train, y_test = train_test_split(features, target,
                                                         test_size=TEST_SIZE,
                                                         random_state=RANDOM_STATE,
@@ -236,9 +285,13 @@ def main():
     logging.info(f"Données divisées en ensembles d'entraînement ({len(x_train)} échantillons) "
                  f"et de test ({len(x_test)} échantillons).")
     
-    joblib.dump(x_test, X_TEST_FILE)
-    joblib.dump(y_test, Y_TEST_FILE)
-    logging.info("Ensembles de test sauvegardés.")
+    # Suppression des anciens fichiers si on ne les utilise plus (df_telco_customer_churn.pkl)
+    # joblib.dump(x_test, X_TEST_FILE) # Sauvegarde les X_test
+    # joblib.dump(y_test, Y_TEST_FILE) # Sauvegarde les y_test
+    # logging.info("Ensembles de test sauvegardés.")
+    # Les fichiers X_TEST_FILE et Y_TEST_FILE ne sont pas strictement nécessaires si le train_model est le seul utilisateur
+    # Ils peuvent être utiles pour une analyse post-entraînement ou si un autre script a besoin du jeu de test exact.
+    # Je les laisse commentés pour l'instant si vous voulez les réactiver.
 
     numerical_cols, binary_yes_no_cols, gender_col, no_internet_service_cols, other_cat_cols = get_column_types(features)
     preprocessor = create_preprocessor(x_train, numerical_cols, binary_yes_no_cols, gender_col, no_internet_service_cols, other_cat_cols)
@@ -300,12 +353,8 @@ def main():
     plt.legend(loc='lower right')
     plt.grid(True)
     plt.savefig(f'ROC_Curve_Best_Model_{best_overall_model_name.replace(" ", "_")}.png')
-    plt.show()
+    # plt.show() # Commenté pour éviter l'affichage automatique lors d'une exécution automatisée
     plt.close()
-
-    # --- La logique de l'affichage de l'importance des caractéristiques est entièrement retirée ici ---
-    # if 'feature_importances' in best_overall_model_info:
-    # ... (le code pour le graphique des importances est supprimé) ...
 
     logging.info("Analyse du meilleur modèle terminée.")
     logging.info("Processus de modélisation du churn terminé avec succès.")

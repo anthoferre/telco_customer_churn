@@ -81,24 +81,24 @@ Les colonnes du jeu de données peuvent être regroupées dans les catégories s
 
 Le modèle de classification (`RandomForestClassifier`) a été évalué sur un jeu de données de test dédié pour garantir la généralisation de ses prédictions.
 
-* **AUC-ROC :** `0.85%`
+* **AUC-ROC :** `0.84`
 
 ### Matrice de Confusion
 
 |      |Réel |   0 |   1 |   Total |
 |------|-----|-----|-----|---------|
 |Prédit|-----|-----|-----|---------|
-| 0    |-----| 607 | 426 |    1033 |
-| 1    |-----|  41 | 333 |     374 |
-|Total |-----| 648 | 759 |    1407 | 
+| 0    |-----| 576 | 457 |    1033 |
+| 1    |-----|  35 | 339 |     374 |
+|Total |-----| 611 | 796 |    1407 | 
 
 ### Rapport de Classification
 
 | Métrique    | Precision | Recall | F1-Score | Moy.Geo |
 |-------------|-----------|--------|----------|---------|
-| Non-Churn   | `0.94`    | `0.59` | `0.72`   | `0.72`  |
-| Churn       | `0.44`    | `0.89` | `0.59`   | `0.72`  |
-| Moy. pond.  | `0.80`    | `0.67` | `0.69`   | `0.72`  |
+| Non-Churn   | `0.94`    | `0.56` | `0.70`   | `0.71`  |
+| Churn       | `0.43`    | `0.91` | `0.58`   | `0.71`  |
+| Moy. pond.  | `0.81`    | `0.65` | `0.67`   | `0.71`  |
 
 *Note : Les valeurs de Precision, Recall et F1-Score pour la classe 'Churn' sont particulièrement importantes pour notre objectif de rétention client. La Moyenne Géommétrique est une métrique importante lors de jeux de données déséquilibrées comme ici lors de l'étude de désabonnement de clients. *
 
@@ -123,8 +123,9 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
 
    #### 5.2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
+Un script Python dédié (`train_model.py`) est responsable de l'entraînement du modèle. Il lit les dernières données depuis la base de données, met à jour la pipeline de ML et sauvegarde la nouvelle version du modèle (`best_overall_churn_model.pkl`).
 Le modèle de prédiction est une pipeline Scikit-learn sérialisée avec `joblib`, englobant les étapes de prétraitement des données (encodage des variables catégorielles, standardisation, etc.) et l'algorithme de classification entraîné.
-Le modèle est chargé en mémoire au démarrage de l'API.
+Cette séparation assure que le processus de ré-entraînement n'affecte pas la disponibilité de l'API de prédiction et permet des mises à jour régulières du modèle avec de nouvelles données, essentielle pour maintenir sa performance.
 
    #### 5.3. Application de Visualisation (Streamlit) :
 Une interface utilisateur interactive (`my_streamlit.py`) conçue pour l'analyse graphique du jeu de données, l'étude des relations entre les variables mais aussi elle peut servir de démonstration des prédictions de churn.
@@ -133,9 +134,7 @@ Une interface utilisateur interactive (`my_streamlit.py`) conçue pour l'analyse
 Une base de données SQLite (`sql_app.db`) est utilisée pour stocker les données historiques des clients (y compris le statut de churn réel) ainsi que potentiellement les logs des prédictions effectuées.
 SQLModel est utilisé pour une interaction ORM (Object-Relational Mapping) simple et efficace avec la base de données.
 
-   #### 5.5. Module de Ré-entraînement (Script séparé) :
-Un script Python dédié (`train_model.py`) est responsable du ré-entraînement du modèle. Il lit les dernières données depuis la base de données, met à jour la pipeline de ML et sauvegarde la nouvelle version du modèle (`churn_model.pkl`).
-Cette séparation assure que le processus de ré-entraînement n'affecte pas la disponibilité de l'API de prédiction et permet des mises à jour régulières du modèle avec de nouvelles données, essentielle pour maintenir sa performance.
+
 
 ## 6. Comment Lancer le Projet
 
@@ -257,7 +256,7 @@ Le modèle peut être ré-entraîné en exécutant le script dédié :
 
 python train_model.py
 ```
-Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API `/add_new_customer_data`), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans `churn_model.pkl`. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
+Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API `/add_new_customer_data`), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans `best_overall_churn_model.pkl`. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
 
 ## 10. Cas d'utilisation et applications potentielles
 

@@ -69,6 +69,10 @@ def load_and_prepare_data_from_db(db_url: str, table_name: str) -> Tuple[pd.Data
         raise # Rélance l'exception pour arrêter le script
 
     logging.info(f"Données chargées : {df.shape[0]} lignes, {df.shape[1]} colonnes.")
+
+    # Convertir les noms de colonnes en str pur 
+    df.columns = [str(col) for col in df.columns]
+    logging.info("Noms de colonnes convertis en chaînes de caractères standard.")
     
     # Conversion de la colonne cible 'Churn' en numérique (0 et 1)
     if 'Churn' in df.columns:
@@ -97,12 +101,7 @@ def get_column_types(features_df: pd.DataFrame) -> Tuple[List[str], List[str], L
     # S'il doit être traité comme une binaire, il faut l'ajouter à binary_yes_no_cols
     # Pour l'instant, je le laisse dans numerical_cols car il est int.
     numerical_cols = features_df.select_dtypes(['int', 'float']).columns.tolist()
-    # Retirer 'SeniorCitizen' de numerical_cols si vous voulez le traiter comme binaire Yes/No ou Gender
-    # Si SeniorCitizen est juste 0/1, il peut rester dans numerical_cols et être scalé, ou être traité comme binaire.
-    # Pour la cohérence avec le modèle original, je le laisse dans numerical_cols (il sera standardisé).
-    if 'SeniorCitizen' not in numerical_cols and 'Seniorcitizen' in numerical_cols: # Pour gérer les variations de casse
-        numerical_cols.remove('Seniorcitizen')
-        numerical_cols.append('SeniorCitizen') # Normalisation du nom de colonne après str.title() dans data_to_db
+   
 
     binary_yes_no_cols = [col for col in features_df.columns
                           if features_df[col].nunique() == 2 and 'Yes' in features_df[col].unique() and 'No' in features_df[col].unique()]
@@ -353,7 +352,7 @@ def main():
     plt.legend(loc='lower right')
     plt.grid(True)
     plt.savefig(f'ROC_Curve_Best_Model_{best_overall_model_name.replace(" ", "_")}.png')
-    # plt.show() # Commenté pour éviter l'affichage automatique lors d'une exécution automatisée
+    plt.show()
     plt.close()
 
     logging.info("Analyse du meilleur modèle terminée.")

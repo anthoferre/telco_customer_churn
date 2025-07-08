@@ -130,8 +130,8 @@ Cette séparation assure que le processus de ré-entraînement n'affecte pas la 
    #### 6.1. Cloner le dépôt :
 
 ```Bash
-git clone <URL_DU_VOTRE_DEPOT>
-cd <NOM_DU_REPERTOIRE>
+git clone https://github.com/anthoferre/telco_customer_churn.git
+cd telco_customer_churn
 ```
 
 

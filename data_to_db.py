@@ -2,6 +2,7 @@ import pandas as pd
 from sqlalchemy import create_engine
 import os
 import logging
+import joblib
 
 # Configuration du logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,6 +18,9 @@ DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 RAW_DATA_FILE = 'raw_data.csv'
 RAW_DATA_PATH = os.path.join(BASE_DIR, RAW_DATA_FILE)
+
+CLEANED_DATA_FILE = 'cleaned_data.pkl' # Nom du fichier Pickle pour le DataFrame nettoyé
+CLEANED_DATA_PATH = os.path.join(BASE_DIR, CLEANED_DATA_FILE)
 
 # --- 2. Charger les données brutes et effectuer un nettoyage initial ---
 def load_and_initial_clean_data(file_path: str) -> pd.DataFrame:
@@ -56,6 +60,13 @@ def load_and_initial_clean_data(file_path: str) -> pd.DataFrame:
     logging.info("Noms de colonnes normalisés (titre).")
 
     logging.info("Données chargées et nettoyées avec succès pour l'ingestion.")
+
+    try:
+        pd.to_pickle(df, CLEANED_DATA_PATH)
+        logging.info(f"DataFrame nettoyé sauvegardé avec succès sous '{CLEANED_DATA_FILE}'.")
+    except Exception as e:
+        logging.error(f"Erreur lors de la sauvegarde du DataFrame nettoyé en Pickle : {e}")
+    
     return df
 
 # --- 3. Fonction principale d'ingestion ---

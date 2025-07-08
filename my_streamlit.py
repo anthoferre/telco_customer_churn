@@ -7,7 +7,7 @@ import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 import io
-from sklearn.metrics import confusion_matrix, classification_report, recall_score
+from sklearn.metrics import confusion_matrix, classification_report, recall_score, f1_score
 
 # Configuration de Seaborn
 sns.set_theme(style="whitegrid") # Utiliser un thème plus léger et souvent plus rapide à rendre
@@ -38,8 +38,8 @@ def load_dataframe(filepath):
         raise ValueError("Format de fichier non pris en charge. Utilisez .csv ou .pkl")
 
 # Charger les DataFrames une seule fois
-df = load_dataframe('WA_Fn-UseC_-Telco-Customer-Churn.csv')
-df_cleaned = load_dataframe('df_telco_customer_churn.pkl')
+df = load_dataframe('raw_data.csv')
+df_cleaned = load_dataframe('cleaned_data.pkl')
 
 # --- Préparation des listes de colonnes (peut être mis en cache si df_cleaned est statique) ---
 @st.cache_data
@@ -67,15 +67,11 @@ except FileNotFoundError:
     st.error("Les fichiers `x_test` ou `y_test` sont introuvables. Assurez-vous qu'ils sont dans le même répertoire que votre script.")
     st.stop()
 
-# Charger les modèles
+# # Charger les modèles
 try:
-    model_lr = load_ml_model('my_model_Logistic Regression.pkl')
-    model_svm = load_ml_model('my_model_Support Vector Machine.pkl')
-    model_dt = load_ml_model('my_model_Decision Tree.pkl')
-    model_rf = load_ml_model('my_model_Random Forest.pkl')
-    churn_model = load_ml_model('churn_model.pkl')
+    churn_model = load_ml_model('best_overall_churn_model.pkl')
 except FileNotFoundError:
-    st.error("Un ou plusieurs fichiers de modèle sont introuvables. Veuillez vérifier les chemins.")
+    st.error("Le fichier du modèle est introuvable. Veuillez vérifier le chemin.")
     st.stop()
 
 # --- Barre latérale pour la navigation ---
@@ -85,7 +81,7 @@ choix_partie = st.sidebar.radio(
         "I - Introduction",
         "II - Exploration des données",
         "III - Data visualization",
-        "IV - Les différents modèles de prédiction du taux de désabonnement des clients",
+        "IV - Le meilleur modèle de prédiction du taux de désabonnement des clients",
         'V - Etude de cas',
         "VI - Conclusion et Perspectives"
     ]
@@ -283,8 +279,8 @@ elif choix_partie == 'III - Data visualization':
             plt.close(fig)
 
 # Partie 4 : Modèle de prédiction du taux de désabonnement des clients
-elif choix_partie == 'IV - Les différents modèles de prédiction du taux de désabonnement des clients':
-    st.title('IV - Les différents modèles de prédiction du taux de désabonnement des clients')
+elif choix_partie == 'IV - Le meilleur modèle de prédiction du taux de désabonnement des clients':
+    st.title('IV - Le meilleur modèle de prédiction du taux de désabonnement des clients')
 
     def plot_confusion_matrix(y_true, y_pred, labels):
         cm = confusion_matrix(y_true, y_pred, labels=labels)
@@ -295,58 +291,29 @@ elif choix_partie == 'IV - Les différents modèles de prédiction du taux de d�
         ax.set_title('Matrice de Confusion')
         return fig
     
-    list_of_models = [model_lr, model_svm, model_dt, model_rf]
-    list_of_recall = []
-    list_of_f1_score = []
-    def display_model_info(col_st, title, model, X_test_data, y_test_data, labels_data):
-        for models in list_of_models:
-            y_pred = models.predict(X_test_data)
-            recall = recall_score(y_test, y_pred)
-            f1_score = models.best_score_
-            list_of_recall.append(recall)
-            list_of_f1_score.append(f1_score)
-        mean_recall_score = np.mean(list_of_recall)
-        mean_f1_score = np.mean(list_of_f1_score)
-        col_st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 1.2em'>{title}</div>", unsafe_allow_html=True)
+    def display_model_info(title, model, X_test_data, y_test_data, labels_data):
+        y_pred = model.predict(X_test_data)
+        recall = recall_score(y_test_data, y_pred)
+        f1 = f1_score(y_test_data, y_pred)
+
+        st.markdown(f"<div style='text-align: center; font-weight: bold; font-size: 1.2em'>{title}</div>", unsafe_allow_html=True)
 
         y_pred = model.predict(X_test_data)
 
         cm_fig = plot_confusion_matrix(y_test_data, y_pred, labels_data)
-        col_st.pyplot(cm_fig)
+        st.pyplot(cm_fig)
         plt.close(cm_fig) # Fermer la figure
 
-        col_st.metric(label = 'F1-Score', value = np.round(model.best_score_,3), border = True, delta = np.round(model.best_score_ - mean_f1_score, 3))
-        col_st.metric(label = 'Recall-Score (Churners)', value = np.round(recall_score(y_test, y_pred),3), border = True, delta = np.round(recall_score(y_test, y_pred)- mean_recall_score,3))
+        st.metric(label = 'F1-Score', value = np.round(f1,3), border = True)
+        st.metric(label = 'Recall-Score (Churners)', value = np.round(recall,3), border = True)
         
 
    
-    col1, col2, col3, col4 = st.columns(4)
-
     labels_churn = [0, 1] # Assurez-vous que c'est cohérent avec vos données
 
-    display_model_info(col1, 'Logistic Regression', model_lr, x_test, y_test, labels_churn)
-    display_model_info(col2, 'Support Vector Machine', model_svm, x_test, y_test, labels_churn)
-    display_model_info(col3, 'Decision Tree', model_dt, x_test, y_test, labels_churn)
-    display_model_info(col4, 'Random Forest', model_rf, x_test, y_test, labels_churn)
+    display_model_info('Meilleur modèle', churn_model, x_test, y_test, labels_churn)
 
-    st.markdown("---")
-    st.markdown("<div style='text-align: center; font-size: 1.5em; font-weight: bold'>Feature Importances</div>", unsafe_allow_html=True)
-    st.markdown("\n")
-
-    col_img, col_text = st.columns([1.5, 1]) # Ajuster la largeur des colonnes
-    with col_img:
-        if os.path.exists('Feature_importances.png'):
-            st.image('Feature_importances.png', use_container_width=True) # Utiliser toute la largeur de la colonne
-        else:
-            st.warning("L'image 'Feature_importances.png' est introuvable. Veuillez vous assurer qu'elle est dans le même répertoire.")
-    with col_text:
-        st.markdown("""
-        Les variables les plus importantes dans le choix que réalise le modèle sur la classification binaire semblent être :
-        **`contract_month_to_month`** (le client paye l'abonnement mois par mois)
-        **`tenure`** (nombre de mois que le client est abonné)
-        **`totalcharges`** et **`monthly charges`** (les charges mensuelles et depuis le début de l'abonnement).
-        \nCes 4 variables représentent plus de **50%** de l'explication du choix du modèle dans la classification churn. Les autres variables ont un impact plus faible (moins de 6%).
-        """)
+   
 
 # Partie 5 : Etude de cas sur de nouvelles données
 elif choix_partie == 'V - Etude de cas':

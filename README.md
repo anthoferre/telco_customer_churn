@@ -150,7 +150,7 @@ pip install -r requirements.txt
 
    #### 6.5. Lancer l'API :
 ```Bash
-uvicorn mon_api:api --reload
+uvicorn my_api:api --reload
 ```
 L'API sera accessible à l'adresse `http://127.0.0.1:8000`. La documentation interactive (Swagger UI) est disponible à `http://127.0.0.1:8000/docs`.
 
@@ -227,7 +227,7 @@ Exemple de Requête (`curl`) :
 
 ## 8. Utilisation de l'Application Streamlit
 
-L'application Streamlit (my_streamlit.py) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
+L'application Streamlit (`my_streamlit.py`) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
 
 Pour lancer l'application Streamlit :
 

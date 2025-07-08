@@ -102,13 +102,25 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 
 *Note : Les valeurs de Precision, Recall et F1-Score pour la classe 'Churn' sont particulièrement importantes pour notre objectif de rétention client. La Moyenne Géommétrique est une métrique importante lors de jeux de données déséquilibrées comme ici lors de l'étude de désabonnement de clients. *
 
-### Matrice de Confusion
-
 ## 5. Architecture de la Solution
+
+```
+└── telco_customer_churn\
+   ├── .venv/
+   ├── README.md
+   ├── requirements.txt
+   ├── raw_data.csv
+   ├── train_model.py
+   ├── best_overall_churn_model.pkl
+   ├── sql_app.db
+   ├── my_streamlit.py
+   ├── my_api.py
+   └── images/
+```
 
    #### 5.1. API de Prédiction (FastAPI) :
 
-Un service robuste et performant (`mon_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
+Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
 
    #### 5.2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
 Le modèle de prédiction est une pipeline Scikit-learn sérialisée avec `joblib`, englobant les étapes de prétraitement des données (encodage des variables catégorielles, standardisation, etc.) et l'algorithme de classification entraîné.
@@ -130,8 +142,8 @@ Cette séparation assure que le processus de ré-entraînement n'affecte pas la 
    #### 6.1. Cloner le dépôt :
 
 ```Bash
-git clone <URL_DU_VOTRE_DEPOT>
-cd <NOM_DU_REPERTOIRE>
+git clone https://github.com/anthoferre/telco_customer_churn.git
+cd telco_customer_churn
 ```
 
 
@@ -150,7 +162,7 @@ pip install -r requirements.txt
 
    #### 6.5. Lancer l'API :
 ```Bash
-uvicorn mon_api:api --reload
+uvicorn my_api:api --reload
 ```
 L'API sera accessible à l'adresse `http://127.0.0.1:8000`. La documentation interactive (Swagger UI) est disponible à `http://127.0.0.1:8000/docs`.
 
@@ -227,7 +239,7 @@ Exemple de Requête (`curl`) :
 
 ## 8. Utilisation de l'Application Streamlit
 
-L'application Streamlit (my_streamlit.py) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
+L'application Streamlit (`my_streamlit.py`) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
 
 Pour lancer l'application Streamlit :
 

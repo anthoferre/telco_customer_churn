@@ -39,6 +39,10 @@ DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 TABLE_NAME = "customers" # Nom de la table dans la base de données
 
+# Ce chemin /app/models/ est celui dans le conteneur où le volume sera monté
+MODEL_OUTPUT_DIR = "/app/model"
+BEST_OVERALL_CHURN_MODEL_FILE = os.path.join(MODEL_OUTPUT_DIR, 'best_overall_churn_model.pkl')
+
 # Fichiers de sauvegarde du modèle et des ensembles de test
 X_TEST_FILE = 'x_test.pkl'
 Y_TEST_FILE = 'y_test.pkl'
@@ -325,6 +329,8 @@ def main():
     logging.info(f"Le meilleur modèle global est : {best_overall_model_name} avec un score de rappel de {best_overall_score:.4f}")
     logging.info(f"Ses meilleurs paramètres sont : {best_overall_model_info['best_params']}")
 
+    if not os.path.exists(MODEL_OUTPUT_DIR):
+        os.makedirs(MODEL_OUTPUT_DIR)
     joblib.dump(best_overall_model_info['best_estimator'], BEST_OVERALL_CHURN_MODEL_FILE)
     logging.info(f"Le meilleur modèle global (pipeline) sauvegardé sous '{BEST_OVERALL_CHURN_MODEL_FILE}'")
 

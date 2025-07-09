@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  churn_trainer:
+    build:
+      context: . # Contexte de build est le répertoire actuel (telco_customer_churn)
+      dockerfile: Dockerfile.train_model
+    volumes:
+      # Monte le dossier './models' de l'hôte dans '/app/models' du conteneur.
+      # Le trainer écrira le modèle ici.
+      - ./train_model:/app/model
+    # On n'expose pas de port pour le trainer car il ne sert qu'à entraîner et sauvegarder
+
+  churn_api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    ports:
+      # Mappe le port 8000 du conteneur au port 8000 de l'hôte
+      - "8000:8000"
+    volumes:
+      # Monte le même dossier './models' de l'hôte dans '/app/models' du conteneur.
+      # L'API lira le modèle d'ici.
+      - ./train_model:/app/model
+    # L'API dépend du trainer pour que le modèle soit entraîné et disponible.
+    # Ceci garantit que trainer est démarré (et son ENTRYPOINT/CMD exécuté) avant l'API.
+    depends_on:
+      - churn_trainer

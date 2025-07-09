@@ -21,7 +21,7 @@ api = FastAPI(title='API de prédiction de Churn et gestion client', version='1.
 
 # --- Chemin de la pipeline à charger ---
 churn_model = None
-MODEL_PATH = "/app/best_model/best_overall_churn_model.pkl" # Assurez-vous que ce fichier existe
+MODEL_PATH = os.path.join("/app/model", "best_overall_churn_model.pkl")
 
 # --- Chemin de la database à charger ---
 DB_FILE = "sql_app.db"

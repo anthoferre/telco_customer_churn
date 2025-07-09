@@ -171,13 +171,8 @@ async def predict_churn(input_data: ChurnPredictionInput):
 
     try:
         # Effectue la prédiction en utilisant le pipeline complet
-        # Le pipeline inclut le préprocesseur et le sélecteur de caractéristiques.
-        # Plus besoin d'appeler `preprocess_for_prediction` manuellement.
         churn_probability = float(churn_model.predict_proba(input_df_raw)[0][1])
         
-        # NOTE : La variable CHURN_THRESHOLD n'est pas définie dans l'API.
-        # Vous devriez soit la définir ici, soit la rendre configurable.
-        # Pour l'instant, j'utilise 0.5 comme valeur par défaut si non définie.
         PREDICTION_THRESHOLD = 0.5 
         churn_label = "Yes" if churn_probability >= PREDICTION_THRESHOLD else "No" 
         logger.info(f"Prédiction pour le client: Probabilité={churn_probability:.2f}, Label={churn_label}")

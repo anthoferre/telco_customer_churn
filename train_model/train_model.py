@@ -4,10 +4,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import logging
-import os # Importation de os pour les chemins de fichiers
+import os
 from typing import List, Dict, Any, Tuple
 
-from sqlalchemy import create_engine # Ajout pour la connexion à la base de données
+from sqlalchemy import create_engine
 
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, OrdinalEncoder
@@ -37,7 +37,7 @@ DB_PATH = os.path.join("/app/database/", DB_FILE)
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
 
-TABLE_NAME = "customers" # Nom de la table dans la base de données
+TABLE_NAME = "customers"
 
 # Ce chemin /app/models/ est celui dans le conteneur où le volume sera monté
 MODEL_OUTPUT_DIR = "/app/model"
@@ -51,12 +51,12 @@ BEST_OVERALL_CHURN_MODEL_FILE = 'best_overall_churn_model.pkl'
 TEST_SIZE = 0.2
 RANDOM_STATE = 66
 CHURN_THRESHOLD = 0.4
-K_BEST_FEATURES_INITIAL = 25 # Cette constante n'est plus directement utilisée pour un plot initial, mais peut être conservée si 'all' est trop coûteux pour certains modèles dans les hyperparams
+K_BEST_FEATURES_INITIAL = 25
 CV_FOLDS = 5
 
 # --- Fonctions ---
 
-# MODIFICATION ICI : La fonction charge maintenant depuis la base de données
+# La fonction charge maintenant depuis la base de données
 def load_and_prepare_data_from_db(db_url: str, table_name: str) -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     """
     Charge les données depuis la base de données, effectue un nettoyage final si nécessaire
@@ -96,16 +96,9 @@ def get_column_types(features_df: pd.DataFrame) -> Tuple[List[str], List[str], L
     Identifie et retourne les noms des colonnes par type pour le prétraitement.
     """
     logging.info("Identification des types de colonnes.")
-    # S'assurer que 'SeniorCitizen' est traité comme une caractéristique numérique ou binaire spécifique
-    # Il est un int 0/1, donc il sera pris par numerical_cols si non explicitement exclu.
-    # Si vous voulez le traiter séparément (ex: comme binaire ordinal), il faudrait ajuster ici.
     
-    # Ajustement : SeniorCitizen est 0/1 mais s'il est utilisé comme feature numérique, pas de soucis.
-    # S'il doit être traité comme une binaire, il faut l'ajouter à binary_yes_no_cols
-    # Pour l'instant, je le laisse dans numerical_cols car il est int.
     numerical_cols = features_df.select_dtypes(['int', 'float']).columns.tolist()
    
-
     binary_yes_no_cols = [col for col in features_df.columns
                           if features_df[col].nunique() == 2 and 'Yes' in features_df[col].unique() and 'No' in features_df[col].unique()]
     
@@ -117,7 +110,7 @@ def get_column_types(features_df: pd.DataFrame) -> Tuple[List[str], List[str], L
     no_service_values = ['No internet service', 'No phone service']
     no_internet_service_cols = [col for col in all_object_cols
                                 if any(val in features_df[col].unique() for val in no_service_values)
-                                or (col == 'MultipleLines' and 'No phone service' in features_df[col].unique())] # Ajout MultipleLines si elle a 'No phone service'
+                                or (col == 'MultipleLines' and 'No phone service' in features_df[col].unique())]
     
     other_cat_cols = [col for col in all_object_cols
                       if col not in gender_col and col not in binary_yes_no_cols and col not in no_internet_service_cols]
@@ -240,8 +233,6 @@ def train_and_evaluate_models(x_train: pd.DataFrame, y_train: pd.Series,
                       'model__max_depth': [None, 10],
                       'model__min_samples_split': [2, 5]}
 
-        # Réduction du nombre d'itérations pour RandomizedSearchCV si le temps de calcul est un souci
-        # n_iter est défini par défaut à 10. Vous pouvez l'ajuster : n_iter=5 ou 20
         grid = RandomizedSearchCV(model_pipeline_all, params, cv=CV_FOLDS, scoring=scorer,
                                   n_jobs=-1, random_state=RANDOM_STATE, verbose=1)
         grid.fit(x_train, y_train)
@@ -277,7 +268,7 @@ def main():
     """
     logging.info("Démarrage du script de prédiction du churn.")
 
-    # MODIFICATION ICI : Appel de la nouvelle fonction de chargement depuis la DB
+    # Appel de la nouvelle fonction de chargement depuis la DB
     features, target, _ = load_and_prepare_data_from_db(DATABASE_URL, TABLE_NAME)
     
     x_train, x_test, y_train, y_test = train_test_split(features, target,
@@ -287,14 +278,6 @@ def main():
     logging.info(f"Données divisées en ensembles d'entraînement ({len(x_train)} échantillons) "
                  f"et de test ({len(x_test)} échantillons).")
     
-    # Suppression des anciens fichiers si on ne les utilise plus (df_telco_customer_churn.pkl)
-    # joblib.dump(x_test, X_TEST_FILE) # Sauvegarde les X_test
-    # joblib.dump(y_test, Y_TEST_FILE) # Sauvegarde les y_test
-    # logging.info("Ensembles de test sauvegardés.")
-    # Les fichiers X_TEST_FILE et Y_TEST_FILE ne sont pas strictement nécessaires si le train_model est le seul utilisateur
-    # Ils peuvent être utiles pour une analyse post-entraînement ou si un autre script a besoin du jeu de test exact.
-    # Je les laisse commentés pour l'instant si vous voulez les réactiver.
-
     numerical_cols, binary_yes_no_cols, gender_col, no_internet_service_cols, other_cat_cols = get_column_types(features)
     preprocessor = create_preprocessor(x_train, numerical_cols, binary_yes_no_cols, gender_col, no_internet_service_cols, other_cat_cols)
 

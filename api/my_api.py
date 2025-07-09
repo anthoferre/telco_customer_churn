@@ -21,10 +21,12 @@ api = FastAPI(title='API de prédiction de Churn et gestion client', version='1.
 
 # --- Chemin de la pipeline à charger ---
 churn_model = None
-MODEL_PATH = "best_overall_churn_model.pkl" # Assurez-vous que ce fichier existe
+MODEL_PATH = "/app/best_model/best_overall_churn_model.pkl" # Assurez-vous que ce fichier existe
 
 # --- Chemin de la database à charger ---
-DATABASE_URL = "sqlite:///./sql_app.db"
+DB_FILE = "sql_app.db"
+DB_PATH = os.path.join("/app/database/", DB_FILE)
+DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, echo=False) # echo=False pour ne pas spammer les logs avec les requêtes SQL
 
 # --- Modèle SQLModel pour la table des clients ---

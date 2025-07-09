@@ -1,0 +1,26 @@
+#utiliser une image légère
+FROM python:3.11-slim-buster
+
+# création du dossier app à l'intérieur du conteneur
+WORKDIR /app
+
+# copier tous les éléments du dossier api dans app/api/
+COPY api/ /app/api/
+
+# copier la database dans app/database/
+COPY database/sql_app.db /app/database/
+
+# copier le meilleur modèle entraîné dans app/best_model/
+COPY train_model/best_overall_churn_model.pkl /app/best_model/
+
+# changer de dossier 
+WORKDIR /app/api
+
+# installer les librairies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# exposer le port 8000
+EXPOSE 8000
+
+# lancer l'API
+CMD ["uvicorn","my_api:api","--host","0.0.0.0","--port","8000"]

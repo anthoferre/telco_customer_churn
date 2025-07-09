@@ -32,11 +32,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 
 # --- Chemins vers les fichiers et la base de données ---
-BASE_DIR = os.path.dirname(os.path.abspath(__file__)) # Répertoire du script actuel
-
 DB_FILE = "sql_app.db"
-DB_PATH = os.path.join(BASE_DIR, DB_FILE)
+DB_PATH = os.path.join("/app/database/", DB_FILE)
 DATABASE_URL = f"sqlite:///{DB_PATH}"
+
 
 TABLE_NAME = "customers" # Nom de la table dans la base de données
 

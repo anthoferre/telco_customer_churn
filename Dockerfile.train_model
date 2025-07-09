@@ -1,0 +1,28 @@
+# Utilise une image de base Python légère
+FROM python:3.11-slim-buster
+
+# Définit le répertoire de travail dans le conteneur
+# C'est ici que votre application sera copiée et exécutée
+WORKDIR /app
+
+# Copie le dossier 'train_model' et ses dépendances
+# Ceci copie train_model/requirements.txt à /app/train_model/requirements.txt
+# et train_model/train.py à /app/train_model/train.py
+COPY train_model/ /app/train_model/
+
+# Copie le dossier 'data' contenant raw_data.csv et sql_app.db
+# Ceci copie le contenu de data/ dans /app/data/
+COPY database/ /app/database/
+
+# Installe les dépendances spécifiques à l'entraînement
+# Change le répertoire de travail temporairement pour installer les requirements
+# puis retourne à /app
+WORKDIR /app/train_model
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Retourne au répertoire de travail principal /app pour l'exécution du script
+WORKDIR /app
+
+# Commande pour exécuter le script d'entraînement
+# Assure que le script est appelé avec le chemin complet depuis /app
+CMD ["python", "train_model/train_model.py"]

@@ -1,0 +1,51 @@
+name: Continuous Integration - Build & Push Docker Images
+
+on:
+  push:
+    branches:
+      - main # Exécute le workflow à chaque push sur la branche main
+  pull_request:
+    branches:
+      - main # Exécute aussi lors de l'ouverture ou la mise à jour d'une Pull Request
+
+env:
+  DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  DOCKER_HUB_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  DOCKER_REPO_PREFIX: anthonyferre
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Ou la version de Python que vous utilisez
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt # Installe les dépendances nécessaires pour les tests/linting
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_HUB_USERNAME }}
+          password: ${{ env.DOCKER_HUB_PASSWORD }}
+
+      - name: Build and push churn_model_trainer image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.train_model
+          push: true
+          tags: ${{ env.DOCKER_REPO_PREFIX }}/churn_model_trainer:latest
+
+      - name: Build and push churn_api image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.api
+          push: true
+          tags: ${{ env.DOCKER_REPO_PREFIX }}/churn_api:latest

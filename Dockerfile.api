@@ -10,9 +10,6 @@ COPY api/ /app/api/
 # copier la database dans app/database/
 COPY database/sql_app.db /app/database/
 
-# copier le meilleur modèle entraîné dans app/best_model/
-COPY train_model/best_overall_churn_model.pkl /app/best_model/
-
 # changer de dossier 
 WORKDIR /app/api
 

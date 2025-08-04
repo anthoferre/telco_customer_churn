@@ -38,8 +38,8 @@ def load_dataframe(filepath):
         raise ValueError("Format de fichier non pris en charge. Utilisez .csv ou .pkl")
 
 # Charger les DataFrames une seule fois
-df = load_dataframe('raw_data.csv')
-df_cleaned = load_dataframe('cleaned_data.pkl')
+df = load_dataframe('../database/raw_data.csv')
+df_cleaned = load_dataframe('../database/cleaned_data.pkl')
 
 # --- Préparation des listes de colonnes (peut être mis en cache si df_cleaned est statique) ---
 @st.cache_data
@@ -61,15 +61,15 @@ def load_test_data(data_path):
     return joblib.load(data_path)
 
 try:
-    x_test = load_test_data('x_test')
-    y_test = load_test_data('y_test')
+    x_test = load_test_data('../train_model/x_test.pkl')
+    y_test = load_test_data('../train_model/y_test.pkl')
 except FileNotFoundError:
     st.error("Les fichiers `x_test` ou `y_test` sont introuvables. Assurez-vous qu'ils sont dans le même répertoire que votre script.")
     st.stop()
 
 # # Charger les modèles
 try:
-    churn_model = load_ml_model('best_overall_churn_model.pkl')
+    churn_model = load_ml_model('../train_model/best_overall_churn_model.pkl')
 except FileNotFoundError:
     st.error("Le fichier du modèle est introuvable. Veuillez vérifier le chemin.")
     st.stop()

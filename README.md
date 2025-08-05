@@ -111,17 +111,31 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
 ## 5. Architecture de la Solution
 
 ```
-└── telco_customer_churn\
+└── telco_customer_churn/
+   ├── api/
+      ├── my_api.py
+      ├── requirements.txt
+   ├── database/
+      ├── cleaned_data.pkl
+      ├── data_to_db.py
+      ├── requirements.txt
+      ├── raw_data.csv
+      ├── sql_app.db
+   ├── streamlit/
+      ├── my_streamlit.py
+      ├── requirements.txt
+   ├── train_model/
+      ├── x_test.pkl
+      ├── y_test.pkl
+      ├── requirements.txt
+      ├── train_model.py
+      ├── best_overall_churn_model.pkl
+   ├── docker-compose.yml
+   ├── Dockerfile.api
+   ├── Dockerfile.train_model
    ├── .venv/
-   ├── README.md
-   ├── requirements.txt
-   ├── raw_data.csv
-   ├── train_model.py
-   ├── best_overall_churn_model.pkl
-   ├── sql_app.db
-   ├── my_streamlit.py
-   ├── my_api.py
-   └── images/
+   ├── .gitignore
+   └── README.md
 ```
 
    #### 5.1. API de Prédiction (FastAPI) :

@@ -11,6 +11,9 @@
 ![Bash](https://img.shields.io/badge/Bash-121011?style=for-the-badge&logo=gnu-bash&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://hub.docker.com/r/votre_nom_utilisateur_docker/nom_de_votre_image)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![SHAP](https://img.shields.io/badge/SHAP-1E4E7A?style=for-the-badge&logo=jupyter&logoColor=white)
+
 
 ---
 
@@ -44,6 +47,8 @@ Le jeu de données comprend **7 043 lignes**, représentant chacune un client 
 - Identifier les facteurs clés : Déterminer quelles caractéristiques (services, contrat, charges, etc.) ont l'impact le plus significatif sur la décision de désabonnement.
 - Déployer une solution opérationnelle : Mettre en place une API robuste permettant d'intégrer facilement la prédiction de churn dans les systèmes existants de l'entreprise.
 - Permettre l'amélioration continue : Concevoir une architecture facilitant le ré-entraînement du modèle avec de nouvelles données, assurant ainsi la pertinence et la performance du modèle dans le temps (approche MLOps).
+- Expliquer les prédictions (Interprétabilité du Modèle) : Utiliser des techniques comme SHAP pour comprendre comment le modèle arrive à ses conclusions, tant au niveau global (quels sont les facteurs les plus importants) qu'au niveau d'un client individuel.
+- Permettre la simulation d'impact : Offrir aux analystes et marketeurs un outil pour simuler des changements sur les caractéristiques d'un client et observer l'impact immédiat sur son risque de désabonnement, facilitant ainsi la conception de stratégies de rétention ciblées.
    
 ## 3. Contenu du jeu de données
 
@@ -239,7 +244,11 @@ Exemple de Requête (`curl`) :
 
 ## 8. Utilisation de l'Application Streamlit
 
-L'application Streamlit (`my_streamlit.py`) fournit une interface utilisateur graphique pour interagir avec le modèle de prédiction de churn. Elle permet de visualiser l'interface de saisie des données client et d'obtenir des prédictions de manière interactive.
+L'application Streamlit (`my_streamlit.py`) est une interface utilisateur graphique interactive qui va bien au-delà de la simple prédiction :
+- Visualisation et Analyse : Explorez le jeu de données et comprenez les relations entre les variables grâce à des graphiques dynamiques.
+- Explication Globale (SHAP Summary Plot) : Découvrez quelles caractéristiques ont le plus d'influence sur le désabonnement à l'échelle de l'ensemble des clients.
+- Étude de Cas Interactive : Prédisez le risque de désabonnement d'un client hypothétique. L'application utilise les valeurs SHAP pour vous montrer visuellement les facteurs qui poussent ce client vers le désabonnement (force plot).
+- Simulation d'Impact : Modifiez une seule caractéristique du client (par exemple, le type de contrat ou le service Internet) et observez en temps réel comment son risque de désabonnement évolue. Cette fonctionnalité est essentielle pour tester l'efficacité de potentielles offres de rétention.
 
 Pour lancer l'application Streamlit :
 

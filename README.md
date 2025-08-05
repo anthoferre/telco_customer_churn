@@ -28,6 +28,7 @@
 * [7. Utilisation de l'API](#7-utilisation-de-lapi)
     * [7.1. Prédiction du Churn](#71-prédiction-du-churn)
     * [7.2. Ajout de Nouvelles Données Client](#72-ajout-de-nouvelles-données-client)
+    * [7.3. Sécurisation de l'API (Clé d'API)](#73-securisation-de-lapi)
 * [8. Utilisation de l'Application Streamlit](#8-utilisation-de-lapplication-streamlit)
 * [9. Ré-entraînement du Modèle](#9-ré-entrainement-du-modele)
 * [10. Cas d'Utilisation et Applications Potentielles](#10-cas-dutilisation-et-applications-potentielles)
@@ -134,13 +135,14 @@ Le modèle de classification (`RandomForestClassifier`) a été évalué sur un 
    ├── Dockerfile.api
    ├── Dockerfile.train_model
    ├── .venv/
+   ├── .env
    ├── .gitignore
    └── README.md
 ```
 
    #### 5.1. API de Prédiction (FastAPI) :
 
-Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).
+Un service robuste et performant (`my_api.py`) permettant de soumettre les caractéristiques d'un client et d'obtenir en retour une prédiction de désabonnement (probabilité et label).  L'API est sécurisée par une clé d'API.
 
    #### 5.2. Modèle de Machine Learning (Scikit-learn Pipeline / Joblib) :
 Un script Python dédié (`train_model.py`) est responsable de l'entraînement du modèle. Il lit les dernières données depuis la base de données, met à jour la pipeline de ML et sauvegarde la nouvelle version du modèle (`best_overall_churn_model.pkl`).
@@ -172,18 +174,26 @@ python -m venv .venv
 source .venv/bin/activate  # Sur Windows: .\.venv\Scripts\activate
 ```
 
-   #### 6.3. Installer les dépendances :
-```Bash
-pip install -r requirements.txt
-```
+   Le projet utilise Docker Compose pour orchestrer l'ensemble des services (training, API, etc.). Il n'est pas nécessaire d'installer les dépendances localement.
 
-   #### 6.4. Pré-requis Modèle : Assurez-vous d'avoir un fichier `churn_model.pkl` (le modèle de ML pré-entraîné) dans le répertoire racine du projet. Si vous n'en avez pas, vous devrez d'abord exécuter le script de ré-entraînement.
+   #### 6.3. Pré-requis :
 
-   #### 6.5. Lancer l'API :
+- Assurez-vous d'avoir [Docker](https://www.docker.com/) et [Docker Compose](https://docs.docker.com/compose/) installés sur votre machine.
+- Créez un fichier `.env` à la racine de votre projet avec votre clé d'API. Ce fichier ne doit jamais être versionné, il faut l'ajouter dans le gitignore.
+
+  #### 6.4. Lancer tous les services avec Docker Compose :
+
 ```Bash
-uvicorn my_api:api --reload
+docker-compose up --build -d
 ```
-L'API sera accessible à l'adresse `http://127.0.0.1:8000`. La documentation interactive (Swagger UI) est disponible à `http://127.0.0.1:8000/docs`.
+Cette commande va :
+- Construire les images Docker pour l'API et l'entraînement (--build).
+- Démarrer le conteneur du churn_trainer.
+- Une fois le trainer démarré, lancer le conteneur de churn_api.
+- L'API attendra que le modèle soit entraîné et sauvegardé avant de démarrer.
+- Les services s'exécuteront en arrière-plan (-d).
+
+L'API sera accessible à l'adresse http://127.0.0.1:8000. La documentation interactive (Swagger UI) est disponible à http://127.0.0.1:8000/docs.
 
 ## 7. Utilisation de l'API
 
@@ -196,30 +206,31 @@ Exemple de Requête (`curl`) :
 ```Bash
 
     curl -X 'POST' \
-      'http://127.0.0.1:8000/predict_churn' \
-      -H 'accept: application/json' \
-      -H 'Content-Type: application/json' \
-      -d '{
-        "Gender": "Male",
-        "Seniorcitizen": 0,
-        "Partner": "Yes",
-        "Dependents": "No",
-        "Tenure": 24,
-        "Phoneservice": "Yes",
-        "Multiplelines": "No",
-        "Internetservice": "DSL",
-        "Onlinesecurity": "Yes",
-        "Onlinebackup": "No",
-        "Deviceprotection": "Yes",
-        "Techsupport": "Yes",
-        "Streamingtv": "No",
-        "Streamingmovies": "No",
-        "Contract": "One year",
-        "Paperlessbilling": "Yes",
-        "Paymentmethod": "Mailed check",
-        "Monthlycharges": 75.25,
-        "Totalcharges": 1806.05
-      }'
+     '[http://127.0.0.1:8000/predict_churn](http://127.0.0.1:8000/predict_churn)' \
+     -H 'accept: application/json' \
+     -H 'Content-Type: application/json' \
+     -H 'X-API-Key: votre_cle_api_secrete' \
+     -d '{
+       "Gender": "Male",
+       "Seniorcitizen": 0,
+       "Partner": "Yes",
+       "Dependents": "No",
+       "Tenure": 24,
+       "Phoneservice": "Yes",
+       "Multiplelines": "No",
+       "Internetservice": "DSL",
+       "Onlinesecurity": "Yes",
+       "Onlinebackup": "No",
+       "Deviceprotection": "Yes",
+       "Techsupport": "Yes",
+       "Streamingtv": "No",
+       "Streamingmovies": "No",
+       "Contract": "One year",
+       "Paperlessbilling": "Yes",
+       "Paymentmethod": "Mailed check",
+       "Monthlycharges": 75.25,
+       "Totalcharges": 1806.05
+     }'
 ```
    #### 7.2. Ajout de Nouvelles Données Client
 
@@ -229,32 +240,39 @@ Exemple de Requête (`curl`) :
 ```Bash
 
     curl -X 'POST' \
-      'http://127.0.0.1:8000/add_new_customer_data' \
-      -H 'accept: application/json' \
-      -H 'Content-Type: application/json' \
-      -d '{
-        "Gender": "Female",
-        "Seniorcitizen": 1,
-        "Partner": "No",
-        "Dependents": "No",
-        "Tenure": 12,
-        "Phoneservice": "Yes",
-        "Multiplelines": "Yes",
-        "Internetservice": "Fiber optic",
-        "Onlinesecurity": "No",
-        "Onlinebackup": "Yes",
-        "Deviceprotection": "No",
-        "Techsupport": "No",
-        "Streamingtv": "Yes",
-        "Streamingmovies": "Yes",
-        "Contract": "Month-to-month",
-        "Paperlessbilling": "Yes",
-        "Paymentmethod": "Electronic check",
-        "Monthlycharges": 95.00,
-        "Totalcharges": 1140.00,
-        "Churn": "Yes"
-      }'
+     '[http://127.0.0.1:8000/add_new_customer_data](http://127.0.0.1:8000/add_new_customer_data)' \
+     -H 'accept: application/json' \
+     -H 'Content-Type: application/json' \
+     -H 'X-API-Key: votre_cle_api_secrete' \
+     -d '{
+       "Gender": "Female",
+       "Seniorcitizen": 1,
+       "Partner": "No",
+       "Dependents": "No",
+       "Tenure": 12,
+       "Phoneservice": "Yes",
+       "Multiplelines": "Yes",
+       "Internetservice": "Fiber optic",
+       "Onlinesecurity": "No",
+       "Onlinebackup": "Yes",
+       "Deviceprotection": "No",
+       "Techsupport": "No",
+       "Streamingtv": "Yes",
+       "Streamingmovies": "Yes",
+       "Contract": "Month-to-month",
+       "Paperlessbilling": "Yes",
+       "Paymentmethod": "Electronic check",
+       "Monthlycharges": 95.00,
+       "Totalcharges": 1140.00,
+       "Churn": "Yes"
+     }'
 ```
+
+   #### 7.3. Sécurisation de l'API (Clé d'API)
+
+Les routes critiques de l'API (telles que `/predict_churn` et `/add_new_customer_data`) sont sécurisées par une clé d'API.
+Toute requête vers ces routes doit inclure un en-tête X-API-Key contenant la clé secrète définie dans votre fichier .env. Sans cet en-tête, le serveur renverra une erreur 401 Unauthorized.
+Vous pouvez gérer cette clé via l'interface Swagger (`/docs`) en cliquant sur le bouton "Authorize" et en entrant votre clé.
 
 ## 8. Utilisation de l'Application Streamlit
 
@@ -275,12 +293,28 @@ L'application s'ouvrira automatiquement dans votre navigateur web à l'adresse `
 
 ## 9. Ré-entraînement du Modèle
 
-Le modèle peut être ré-entraîné en exécutant le script dédié :
+Le modèle peut être ré-entraîné à tout moment pour améliorer sa performance avec de nouvelles données. Le processus est géré par Docker Compose :
+
 ```Bash
 
-python train_model.py
+docker-compose up --build churn_trainer
 ```
-Ce script se connectera à la base de données, récupérera toutes les données disponibles (y compris celles ajoutées via l'API `/add_new_customer_data`), ré-entraînera la pipeline de ML et sauvegardera le nouveau modèle dans `best_overall_churn_model.pkl`. Après le ré-entraînement, l'API FastAPI doit être redémarrée pour charger la nouvelle version du modèle.
+
+Cette commande force Docker à reconstruire et à exécuter le service `churn_trainer`. Une fois le script terminé, il aura mis à jour le fichier `best_overall_churn_model.pkl` sur le volume partagé.
+
+Pour que l'API utilise ce nouveau modèle, vous devez redémarrer son conteneur :
+```Bash
+docker-compose restart churn_api
+```
+
+Alternativement, vous pouvez simplement relancer l'ensemble de l'application, ce qui est souvent plus simple :
+
+```Bash
+docker-compose up --build -d
+```
+
+Cette commande s'occupe de tout : elle mettra à jour l'image du trainer si le code a changé, ré-entraînera le modèle, et redémarrera l'API pour qu'elle charge la nouvelle version.
+
 
 ## 10. Cas d'utilisation et applications potentielles
 

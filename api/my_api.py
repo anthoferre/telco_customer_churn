@@ -7,6 +7,9 @@ import pandas as pd
 import logging
 from typing import Optional, List
 from sqlmodel import create_engine, SQLModel, Field as SQLField, Session, select
+from fastapi.security import APIKeyHeader
+from starlette.status import HTTP_401_UNAUTHORIZED, HTTP_500_INTERNAL_SERVER_ERROR
+
 
 # --- Configuration du logging ---
 logger = logging.getLogger(__name__)
@@ -28,6 +31,26 @@ DB_FILE = "sql_app.db"
 DB_PATH = os.path.join("/app/database/", DB_FILE)
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 engine = create_engine(DATABASE_URL, echo=False) # echo=False pour ne pas spammer les logs avec les requêtes SQL
+
+# --- Configuration de la sécurité (API Key) ---
+API_KEY = os.getenv("API_KEY")
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+async def get_api_key(api_key: str = Depends(api_key_header)):
+    """
+    Dépendance de sécurité pour vérifier la clé d'API.
+    """
+    if API_KEY is None:
+        raise HTTPException(
+            status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur de configuration : Clé d'API non définie sur le serveur."
+        )
+    if api_key is None or api_key != API_KEY:
+        raise HTTPException(
+            status_code=HTTP_401_UNAUTHORIZED,
+            detail="Clé d'API invalide ou manquante."
+        )
+    return api_key
 
 # --- Modèle SQLModel pour la table des clients ---
 class Customer(SQLModel, table=True):
@@ -123,16 +146,16 @@ class ChurnPredictionInput(BaseModel):
     Tenure : int = Field(..., example=10, description="Nombre de mois depuis que le client est abonné", ge=1)
     Phoneservice : str = Field(..., example='Yes', description="Indique si le client dispose d'un service téléphonique (Yes/No)", pattern="^(Yes|No)$")
     Multiplelines : str = Field(..., example='Yes', description="Indique si le client a plusieurs lignes téléphoniques (Yes/No/No phone service)", pattern="^(Yes|No|No phone service)$")
-    Internetservice : str = Field(..., example='Yes', description="Indique si le client dispose d'un service internet (DSL/Fiber optic/No)", pattern="^(DSL|Fiber optic|No)$")
+    Internetservice : str = Field(..., example='DSL', description="Indique si le client dispose d'un service internet (DSL/Fiber optic/No)", pattern="^(DSL|Fiber optic|No)$")
     Onlinesecurity : str = Field(..., example='Yes', description="Indique si le client dispose d'une service sécurité en ligne (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
     Onlinebackup : str = Field(..., example='Yes', description="Indique si le client dispose d'un service de sauvegarde en ligne (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
     Deviceprotection : str = Field(..., example='Yes', description="Indique si le client dispose d'un service de protection des appareils (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
     Techsupport : str = Field(..., example='Yes', description="Indique si le client dispose d'un service de support technique (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
     Streamingtv : str = Field(..., example='Yes', description="Indique si le client dispose d'un service de streaming télé (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
     Streamingmovies : str = Field(..., example='Yes', description="Indique si le client dispose d'un service de films en streaming  (Yes/No/No internet service)", pattern="^(Yes|No|No internet service)$")
-    Contract : str = Field(..., example='Yes', description="Indique le type d'abonnement (Month-to-month/One year/Two year)", pattern="^(Month-to-month|One year|Two year)$")
+    Contract : str = Field(..., example='Month-to-month', description="Indique le type d'abonnement (Month-to-month/One year/Two year)", pattern="^(Month-to-month|One year|Two year)$")
     Paperlessbilling : str = Field(..., example='Yes', description="Indique si le client a ses factures papiers ou non (Yes/No)", pattern="^(Yes|No)$")
-    Paymentmethod : str = Field(..., example='Yes', description="Moyen de paiement(Electronic check/Mailed check/Bank transfer (automatic)/Credit card (automatic))", pattern="^(Electronic check|Mailed check|Bank transfer (automatic)|Credit card (automatic))$")
+    Paymentmethod : str = Field(..., example='Electronic check', description="Moyen de paiement(Electronic check/Mailed check/Bank transfer (automatic)/Credit card (automatic))", pattern="^(Electronic check|Mailed check|Bank transfer (automatic)|Credit card (automatic))$")
     Monthlycharges : float = Field(..., example='80.5', description="Charges mensuelles", ge=0)
     Totalcharges : float = Field(..., example='400.5', description="Charges totales", ge=0)
 
@@ -146,7 +169,8 @@ class ChurnPredictionOutput(BaseModel):
 
 # --- Routes de l'API ---
 
-@api.post("/predict_churn", response_model=ChurnPredictionOutput, summary="Prédire le désabonnement client")
+@api.post("/predict_churn", response_model=ChurnPredictionOutput, summary="Prédire le désabonnement client", 
+          dependencies=[Depends(get_api_key)])
 async def predict_churn(input_data: ChurnPredictionInput):
     """
     Endpoint pour la prédiction de désabonnement des clients.
@@ -190,7 +214,8 @@ async def predict_churn(input_data: ChurnPredictionInput):
 ### **Routes pour la gestion des clients (CRUD)**
 
 
-@api.post("/customers/", response_model=Customer, status_code=status.HTTP_201_CREATED, summary="Ajouter un nouveau client")
+@api.post("/customers/", response_model=Customer, status_code=status.HTTP_201_CREATED, summary="Ajouter un nouveau client",
+          dependencies=[Depends(get_api_key)])
 async def create_customer(customer: ChurnPredictionInput, session: Session = Depends(get_session)):
     """
     Crée un nouvel enregistrement client dans la base de données.
@@ -206,7 +231,7 @@ async def create_customer(customer: ChurnPredictionInput, session: Session = Dep
         logger.exception(f"Erreur lors de l'ajout du client : {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Impossible d'ajouter le client : {e}")
 
-@api.get("/customers/", response_model=List[Customer], summary="Récupérer tous les clients")
+@api.get("/customers/", response_model=List[Customer], summary="Récupérer tous les clients", dependencies=[Depends(get_api_key)])
 async def read_customers(session: Session = Depends(get_session)):
     """
     Récupère la liste de tous les clients enregistrés dans la base de données.
@@ -219,7 +244,8 @@ async def read_customers(session: Session = Depends(get_session)):
         logger.exception(f"Erreur lors de la récupération des clients : {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Impossible de récupérer les clients : {e}")
 
-@api.get("/customers/{customer_id}", response_model=Customer, summary="Récupérer un client par ID")
+@api.get("/customers/{customer_id}", response_model=Customer, summary="Récupérer un client par ID",
+         dependencies=[Depends(get_api_key)])
 async def read_customer(customer_id: int, session: Session = Depends(get_session)):
     """
     Récupère un client spécifique par son ID.
@@ -231,7 +257,8 @@ async def read_customer(customer_id: int, session: Session = Depends(get_session
     logger.info(f"Client récupéré avec l'ID : {customer_id}")
     return customer
 
-@api.put("/customers/{customer_id}", response_model=Customer, summary="Mettre à jour un client existant")
+@api.put("/customers/{customer_id}", response_model=Customer, summary="Mettre à jour un client existant",
+         dependencies=[Depends(get_api_key)])
 async def update_customer(customer_id: int, customer_update: ChurnPredictionInput, session: Session = Depends(get_session)):
     """
     Met à jour les informations d'un client existant.
@@ -255,7 +282,8 @@ async def update_customer(customer_id: int, customer_update: ChurnPredictionInpu
         logger.exception(f"Erreur lors de la mise à jour du client {customer_id} : {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Impossible de mettre à jour le client : {e}")
 
-@api.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Supprimer un client")
+@api.delete("/customers/{customer_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Supprimer un client",
+            dependencies=[Depends(get_api_key)])
 async def delete_customer(customer_id: int, session: Session = Depends(get_session)):
     """
     Supprime un client de la base de données.

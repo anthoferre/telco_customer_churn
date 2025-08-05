@@ -11,6 +11,7 @@ y_test
 env/
 venv/
 .venv/  # Votre environnement virtuel
+.env
 
 # Fichiers spécifiques aux bases de données
 *.db     # Pour SQLite, par exemple sql_app.db

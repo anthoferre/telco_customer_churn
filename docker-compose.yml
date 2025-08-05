@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   churn_trainer:
     build:
@@ -26,3 +24,5 @@ services:
     # Ceci garantit que trainer est démarré (et son ENTRYPOINT/CMD exécuté) avant l'API.
     depends_on:
       - churn_trainer
+    env_file:
+      - .env
